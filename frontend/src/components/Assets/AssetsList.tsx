@@ -42,10 +42,10 @@ export const AssetsList: React.FC = () => {
   const [clientFilter, setClientFilter] = useState('');
   const [manufacturerFilter, setManufacturerFilter] = useState('');
 
-  // Fetch assets
+  // Fetch assets (max page_size is 100 per backend validation)
   const { data: assetsData, isLoading, error } = useQuery({
     queryKey: ['assets'],
-    queryFn: () => assetsApi.listAssets({ page_size: 1000 }),
+    queryFn: () => assetsApi.listAssets({ page_size: 100 }),
   });
 
   // Fetch asset types
@@ -54,10 +54,10 @@ export const AssetsList: React.FC = () => {
     queryFn: () => assetsApi.listAssetTypes(),
   });
 
-  // Fetch clients for filter
+  // Fetch clients for filter (max page_size is 100 per backend validation)
   const { data: clientsData } = useQuery({
     queryKey: ['clients-filter'],
-    queryFn: () => clientsApi.listClients({ page_size: 1000 }),
+    queryFn: () => clientsApi.listClients({ page_size: 100 }),
   });
 
   // Create lookup maps

@@ -61,10 +61,10 @@ export const TicketsList: React.FC = () => {
     queryFn: () => ticketsApi.listTicketStatuses(),
   });
 
-  // Fetch clients for filter dropdown
+  // Fetch clients for filter dropdown (max page_size is 100 per backend validation)
   const { data: clientsData } = useQuery({
     queryKey: ['clients-filter'],
-    queryFn: () => clientsApi.listClients({ page_size: 1000 }),
+    queryFn: () => clientsApi.listClients({ page_size: 100 }),
   });
 
   // Create lookup maps

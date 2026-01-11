@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pip install:*)",
+      "Bash(python verify_migrations.py:*)",
+      "Bash(python test_startup_auth.py:*)",
+      "Bash(pip install:*)",
+      "Bash(alembic revision:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(alembic current:*)",
+      "Bash(alembic heads:*)",
+      "Bash(npm install)",
+      "Bash(tree:*)",
+      "Bash(git mv:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

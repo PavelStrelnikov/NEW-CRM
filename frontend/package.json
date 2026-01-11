@@ -1,0 +1,38 @@
+{
+  "name": "crm-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.22.0",
+    "@mui/material": "^5.15.10",
+    "@mui/icons-material": "^5.15.10",
+    "@mui/styles": "^5.15.10",
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@emotion/cache": "^11.11.0",
+    "@tanstack/react-query": "^5.20.5",
+    "axios": "^1.6.7",
+    "i18next": "^23.8.2",
+    "react-i18next": "^14.0.5",
+    "date-fns": "^3.3.1",
+    "jss": "^10.10.0",
+    "jss-rtl": "^0.3.0",
+    "stylis": "^4.3.0",
+    "stylis-plugin-rtl": "^2.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.4"
+  }
+}

@@ -145,7 +145,13 @@
     "properties": "מאפיינים",
     "linkedTickets": "קריאות שירות מקושרות",
     "noAssets": "לא נמצאו נכסים",
-    "searchPlaceholder": "חיפוש לפי תווית, IP, מס' סידורי"
+    "searchPlaceholder": "חיפוש לפי תווית, IP, מס' סידורי",
+    "allTypes": "כל הסוגים",
+    "allManufacturers": "כל היצרנים",
+    "allStatuses": "כל הסטטוסים",
+    "statusActive": "פעיל",
+    "statusInactive": "לא פעיל",
+    "statusMaintenance": "תחזוקה"
   },
   "activity": {
     "title": "יומן פעילות",

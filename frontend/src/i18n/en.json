@@ -145,7 +145,13 @@
     "properties": "Properties",
     "linkedTickets": "Linked Tickets",
     "noAssets": "No assets found",
-    "searchPlaceholder": "Search by label, IP, serial number"
+    "searchPlaceholder": "Search by label, IP, serial number",
+    "allTypes": "All Types",
+    "allManufacturers": "All Manufacturers",
+    "allStatuses": "All Statuses",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "statusMaintenance": "Maintenance"
   },
   "activity": {
     "title": "Activity Log",

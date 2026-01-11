@@ -131,6 +131,17 @@ export interface ContactListResponse {
 }
 
 // Ticket types
+export interface TicketStatus {
+  id: string;
+  code: string;
+  name_en: string;
+  name_he: string;
+  is_default: boolean;
+  is_closed_state: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
+
 export interface Ticket {
   id: string;
   ticket_number: string;

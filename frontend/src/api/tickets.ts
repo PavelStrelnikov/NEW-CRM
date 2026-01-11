@@ -8,9 +8,16 @@ import {
   WorkLog,
   LineItemCreate,
   LineItem,
+  TicketStatus,
 } from '@/types';
 
 export const ticketsApi = {
+  // Reference data
+  listTicketStatuses: async (): Promise<TicketStatus[]> => {
+    const response = await apiClient.get<TicketStatus[]>('/ticket-statuses');
+    return response.data;
+  },
+
   listTickets: async (params?: {
     client_id?: string;
     site_id?: string;

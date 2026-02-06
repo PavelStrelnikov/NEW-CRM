@@ -2,9 +2,18 @@ import { apiClient } from './client';
 import {
   Asset,
   AssetCreate,
+  AssetUpdate,
   AssetListResponse,
   AssetDetailResponse,
   AssetType,
+  AssetPropertyDefinition,
+  AssetUsageSummary,
+  AssetEvent,
+  NVRDisk,
+  NVRDiskCreate,
+  NVRDiskUpdate,
+  ChannelWithStatus,
+  NVRChannelBulkUpdateRequest,
 } from '@/types';
 
 export const assetsApi = {
@@ -38,8 +47,71 @@ export const assetsApi = {
     return response.data;
   },
 
+  updateAsset: async (id: string, data: AssetUpdate): Promise<Asset> => {
+    const response = await apiClient.patch<Asset>(`/assets/${id}`, data);
+    return response.data;
+  },
+
+  getAssetUsageSummary: async (id: string): Promise<AssetUsageSummary> => {
+    const response = await apiClient.get<AssetUsageSummary>(`/assets/${id}/usage-summary`);
+    return response.data;
+  },
+
+  deleteAsset: async (id: string): Promise<void> => {
+    await apiClient.delete(`/assets/${id}`);
+  },
+
+  getAssetEvents: async (id: string): Promise<AssetEvent[]> => {
+    const response = await apiClient.get<AssetEvent[]>(`/assets/${id}/events`);
+    return response.data;
+  },
+
   listAssetTypes: async (): Promise<AssetType[]> => {
     const response = await apiClient.get<AssetType[]>('/asset-types');
     return response.data;
   },
+
+  getAssetTypeProperties: async (assetTypeId: string): Promise<AssetPropertyDefinition[]> => {
+    const response = await apiClient.get<AssetPropertyDefinition[]>(
+      `/asset-types/${assetTypeId}/properties`
+    );
+    return response.data;
+  },
+
+  // NVR Disk CRUD operations
+  getAssetDisks: async (assetId: string): Promise<NVRDisk[]> => {
+    const response = await apiClient.get<NVRDisk[]>(`/assets/${assetId}/disks`);
+    return response.data;
+  },
+
+  createAssetDisk: async (assetId: string, data: NVRDiskCreate): Promise<NVRDisk> => {
+    const response = await apiClient.post<NVRDisk>(`/assets/${assetId}/disks`, data);
+    return response.data;
+  },
+
+  updateAssetDisk: async (assetId: string, diskId: string, data: NVRDiskUpdate): Promise<NVRDisk> => {
+    const response = await apiClient.patch<NVRDisk>(`/assets/${assetId}/disks/${diskId}`, data);
+    return response.data;
+  },
+
+  deleteAssetDisk: async (assetId: string, diskId: string): Promise<void> => {
+    await apiClient.delete(`/assets/${assetId}/disks/${diskId}`);
+  },
+
+  // NVR Channel operations
+  getChannels: async (assetId: string): Promise<ChannelWithStatus[]> => {
+    const response = await apiClient.get<ChannelWithStatus[]>(`/assets/${assetId}/channels`);
+    return response.data;
+  },
+
+  bulkUpdateChannels: async (assetId: string, data: NVRChannelBulkUpdateRequest): Promise<void> => {
+    await apiClient.post(`/assets/${assetId}/channels/bulk-update`, data);
+  },
 };
+
+// Aliases for compatibility with portal API interface
+assetsApi.list = assetsApi.listAssets;
+assetsApi.get = assetsApi.getAsset;
+assetsApi.create = assetsApi.createAsset;
+assetsApi.update = assetsApi.updateAsset;
+assetsApi.delete = assetsApi.deleteAsset;

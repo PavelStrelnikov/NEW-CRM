@@ -31,6 +31,9 @@ class Client(Base, TimestampMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False, index=True)
+    tax_id = Column(String, nullable=True)
+    main_phone = Column(String, nullable=True)
+    main_email = Column(String, nullable=True)
     main_address = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     status = Column(String, nullable=False, default=ClientStatus.ACTIVE.value)

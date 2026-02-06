@@ -2,7 +2,7 @@
 Asset domain models: assets, asset_types, asset_property_definitions,
 asset_property_values, asset_events, nvr_disks, ticket_asset_links.
 """
-from sqlalchemy import Column, String, ForeignKey, Integer, Text, DateTime, Boolean, Date, Numeric, Table, UniqueConstraint
+from sqlalchemy import Column, String, ForeignKey, Integer, Text, DateTime, Boolean, Date, Numeric, Table, UniqueConstraint, JSON, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -18,6 +18,14 @@ class AssetStatus(str, enum.Enum):
     IN_REPAIR = "in_repair"
     REPLACED = "replaced"
     RETIRED = "retired"
+
+
+class HealthStatus(str, enum.Enum):
+    """Equipment health status from probe diagnostics."""
+    OK = "ok"           # All systems normal
+    WARNING = "warning" # Issues detected but device operational
+    CRITICAL = "critical"  # Severe issues requiring attention
+    UNKNOWN = "unknown" # Never probed or probe failed
 
 
 class PropertyDataType(str, enum.Enum):
@@ -89,6 +97,12 @@ class Asset(Base, TimestampMixin):
     location_id = Column(UUID(as_uuid=True), ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
     notes = Column(Text, nullable=True)
 
+    # Health monitoring fields (populated by probe)
+    health_status = Column(String(20), nullable=False, default=HealthStatus.UNKNOWN.value, index=True)
+    health_issues = Column(JSON, nullable=True)  # List of issue codes: ['HDD_SMART_FAIL', 'NO_RECORDING_24H']
+    last_probe_at = Column(DateTime, nullable=True)
+    last_probe_result = Column(JSON, nullable=True)  # Full probe result for channel status display
+
     # Relationships
     client = relationship("Client", back_populates="assets")
     site = relationship("Site", back_populates="assets")
@@ -97,6 +111,8 @@ class Asset(Base, TimestampMixin):
     property_values = relationship("AssetPropertyValue", back_populates="asset", cascade="all, delete-orphan")
     events = relationship("AssetEvent", back_populates="asset", cascade="all, delete-orphan")
     nvr_disks = relationship("NVRDisk", back_populates="asset", cascade="all, delete-orphan")
+    nvr_channels = relationship("NVRChannel", back_populates="asset", cascade="all, delete-orphan")
+    tickets = relationship("Ticket", foreign_keys="[Ticket.asset_id]", back_populates="asset")  # Tickets for this asset
 
 
 class AssetPropertyDefinition(Base, TimestampMixin):
@@ -178,7 +194,7 @@ class AssetEvent(Base):
 
 
 class NVRDisk(Base, TimestampMixin):
-    """NVR disk tracking."""
+    """NVR disk tracking with S.M.A.R.T. data."""
     __tablename__ = "nvr_disks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -187,6 +203,38 @@ class NVRDisk(Base, TimestampMixin):
     capacity_tb = Column(Numeric(5, 2), nullable=False)
     install_date = Column(Date, nullable=False)
     serial_number = Column(String, nullable=True)
+    # S.M.A.R.T. health data from probe
+    status = Column(String(50), nullable=True, default="ok")  # ok, warning, error, unknown
+    working_hours = Column(Integer, nullable=True)  # Power-on hours from S.M.A.R.T.
+    temperature = Column(Integer, nullable=True)  # Temperature in Celsius
+    smart_status = Column(String(50), nullable=True)  # Pass, Fail, Warning
 
     # Relationships
     asset = relationship("Asset", back_populates="nvr_disks")
+
+
+class NVRChannel(Base, TimestampMixin):
+    """NVR channel customization with ignore flags and service notes."""
+    __tablename__ = "nvr_channels"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_number = Column(Integer, nullable=False)  # 1-64 (D1-D64)
+
+    # Customization fields
+    custom_name = Column(String(100), nullable=True)  # e.g., "Main Entrance"
+    is_ignored = Column(Boolean, nullable=False, default=False)  # Exclude from health monitoring
+    notes = Column(Text, nullable=True)  # Service info: port, camera model, location
+
+    # Actor tracking for audit trail
+    updated_by_actor_type = Column(String, nullable=False)
+    updated_by_actor_id = Column(UUID(as_uuid=True), nullable=True)
+    updated_by_actor_display = Column(String, nullable=False)
+
+    # Relationships
+    asset = relationship("Asset", back_populates="nvr_channels")
+
+    __table_args__ = (
+        UniqueConstraint("asset_id", "channel_number", name="uq_nvr_channel_asset_channel"),
+        Index("ix_nvr_channels_asset_id_channel", "asset_id", "channel_number"),
+    )

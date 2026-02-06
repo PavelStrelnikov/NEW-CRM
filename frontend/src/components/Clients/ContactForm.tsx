@@ -20,7 +20,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { clientsApi } from '@/api/clients';
+import { portalClientsApi } from '@/api/portalClients';
 import { Contact, ContactCreate, ContactUpdate } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ContactFormProps {
   open: boolean;
@@ -38,6 +40,8 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   contact,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isPortalUser = user?.user_type === 'portal';
   const [formData, setFormData] = useState<ContactCreate | ContactUpdate>({
     client_id: clientId,
     name: '',
@@ -53,8 +57,8 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   // Fetch sites for this client
   const { data: sitesData } = useQuery({
-    queryKey: ['sites', clientId],
-    queryFn: () => clientsApi.listSites(clientId),
+    queryKey: ['sites', clientId, isPortalUser ? 'portal' : 'admin'],
+    queryFn: () => isPortalUser ? portalClientsApi.listSites(clientId) : clientsApi.listSites(clientId),
     enabled: open,
   });
 
@@ -97,9 +101,19 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
     try {
       if (contact) {
-        await clientsApi.updateContact(contact.id, formData);
+        // Route update to correct API based on user type
+        if (isPortalUser) {
+          await portalClientsApi.updateContact(contact.id, formData);
+        } else {
+          await clientsApi.updateContact(contact.id, formData);
+        }
       } else {
-        await clientsApi.createContact(clientId, formData as ContactCreate);
+        // Route create to correct API based on user type
+        if (isPortalUser) {
+          await portalClientsApi.createContact(formData as ContactCreate);
+        } else {
+          await clientsApi.createContact(clientId, formData as ContactCreate);
+        }
       }
       onSuccess();
     } catch (err: any) {

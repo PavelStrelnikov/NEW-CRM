@@ -2,19 +2,22 @@
 Import all models so they are registered with SQLAlchemy Base.metadata.
 This is required for Alembic autogenerate to detect all models.
 """
-from app.models.users import InternalUser, ClientUser, InternalUserRole, ClientUserRole, Locale
+from app.models.users import InternalUser, ClientUser, ClientUserSite, ClientUserClient, InternalUserRole, ClientUserRole, Locale
 from app.models.clients import Client, Site, Contact, Location, ClientStatus, contact_site_links
 from app.models.tickets import (
     TicketStatusDefinition,
+    TicketCategoryDefinition,
     Ticket,
     TicketInitiator,
     TicketEvent,
+    TicketAssignmentHistory,
     TicketCategory,
     TicketPriority,
     SourceChannel,
     ReportedVia,
     ServiceScope,
-    InitiatorType
+    InitiatorType,
+    CreatedByType
 )
 from app.models.time_billing import WorkLog, TicketLineItem, WorkType, ItemType
 from app.models.assets import (
@@ -24,6 +27,7 @@ from app.models.assets import (
     AssetPropertyValue,
     AssetEvent,
     NVRDisk,
+    NVRChannel,
     AssetStatus,
     PropertyDataType,
     PropertyVisibility,
@@ -45,6 +49,8 @@ __all__ = [
     # Users
     "InternalUser",
     "ClientUser",
+    "ClientUserSite",
+    "ClientUserClient",
     "InternalUserRole",
     "ClientUserRole",
     "Locale",
@@ -57,15 +63,18 @@ __all__ = [
     "contact_site_links",
     # Tickets
     "TicketStatusDefinition",
+    "TicketCategoryDefinition",
     "Ticket",
     "TicketInitiator",
     "TicketEvent",
+    "TicketAssignmentHistory",
     "TicketCategory",
     "TicketPriority",
     "SourceChannel",
     "ReportedVia",
     "ServiceScope",
     "InitiatorType",
+    "CreatedByType",
     # Time & Billing
     "WorkLog",
     "TicketLineItem",
@@ -78,6 +87,7 @@ __all__ = [
     "AssetPropertyValue",
     "AssetEvent",
     "NVRDisk",
+    "NVRChannel",
     "AssetStatus",
     "PropertyDataType",
     "PropertyVisibility",

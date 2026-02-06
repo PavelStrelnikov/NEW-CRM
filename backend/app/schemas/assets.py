@@ -97,9 +97,32 @@ class AssetResponse(AssetBase):
     client_id: UUID
     site_id: UUID
     asset_type_id: UUID
+    asset_type_code: Optional[str] = None  # Computed from asset_type relationship
     location_id: Optional[UUID] = None
+    # Key network properties for list display
+    wan_public_ip: Optional[str] = None
+    lan_ip_address: Optional[str] = None
+    # Health monitoring fields
+    health_status: str = "unknown"  # ok, warning, critical, unknown
+    health_issues: Optional[List[str]] = None  # List of issue codes
+    last_probe_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AssetTicketSummary(BaseModel):
+    """Minimal ticket info for asset details page."""
+    id: UUID
+    ticket_number: str
+    title: str
+    status_id: UUID
+    status_code: Optional[str] = None
+    is_closed: bool = False
+    priority: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -109,6 +132,8 @@ class AssetDetailResponse(AssetResponse):
     """Asset response with related objects and properties."""
     asset_type: AssetTypeResponse
     properties: List[AssetPropertyValueResponse] = []
+    tickets: List[AssetTicketSummary] = []  # Service tickets for this asset
+    has_active_ticket: bool = False  # True if any non-closed ticket exists
 
 
 class AssetListResponse(BaseModel):
@@ -152,6 +177,11 @@ class NVRDiskBase(BaseModel):
     capacity_tb: float = Field(..., gt=0)
     install_date: date
     serial_number: Optional[str] = None
+    # S.M.A.R.T. health data from probe
+    status: Optional[str] = Field(default="ok", description="Disk status: ok, warning, error, unknown")
+    working_hours: Optional[int] = Field(default=None, description="Power-on hours from S.M.A.R.T.")
+    temperature: Optional[int] = Field(default=None, description="Temperature in Celsius")
+    smart_status: Optional[str] = Field(default=None, description="S.M.A.R.T. status: Pass, Fail, Warning")
 
 
 class NVRDiskCreate(NVRDiskBase):
@@ -165,6 +195,10 @@ class NVRDiskUpdate(BaseModel):
     capacity_tb: Optional[float] = Field(None, gt=0)
     install_date: Optional[date] = None
     serial_number: Optional[str] = None
+    status: Optional[str] = None
+    working_hours: Optional[int] = None
+    temperature: Optional[int] = None
+    smart_status: Optional[str] = None
 
 
 class NVRDiskResponse(NVRDiskBase):
@@ -173,6 +207,42 @@ class NVRDiskResponse(NVRDiskBase):
     asset_id: UUID
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ========== NVR Channel Schemas ==========
+
+class NVRChannelBulkUpdate(BaseModel):
+    """Schema for updating a single channel's customization."""
+    channel_number: int = Field(..., ge=1, le=64, description="Channel number (1-64)")
+    custom_name: Optional[str] = Field(None, max_length=100, description="User-friendly channel name")
+    is_ignored: bool = Field(default=False, description="Exclude from health monitoring")
+    notes: Optional[str] = Field(None, description="Service info: port, camera model, location")
+
+
+class NVRChannelBulkUpdateRequest(BaseModel):
+    """Schema for bulk channel updates."""
+    channels: List[NVRChannelBulkUpdate] = Field(..., min_length=1, description="List of channel updates")
+
+
+class ChannelWithStatusResponse(BaseModel):
+    """Channel customization merged with live probe data."""
+    channel_number: int
+    # Customization fields (from nvr_channels table)
+    custom_name: Optional[str] = None
+    is_ignored: bool = False
+    notes: Optional[str] = None
+    # Live status fields (from last_probe_result)
+    name: Optional[str] = None  # Device-reported name (e.g., "D1")
+    ip_address: Optional[str] = None
+    is_configured: bool = False  # Whether channel is configured on device
+    is_online: bool = False
+    has_recording_24h: bool = False
+    # Audit fields
+    updated_by_actor_display: Optional[str] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -7,6 +7,19 @@ from uuid import UUID
 from datetime import datetime
 
 
+# ========== Contact Info for Ticket Responses ==========
+
+class ContactInfo(BaseModel):
+    """Minimal contact info for ticket responses."""
+    id: UUID
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 # ========== Ticket Status Schemas ==========
 
 class TicketStatusDefinitionResponse(BaseModel):
@@ -19,6 +32,47 @@ class TicketStatusDefinitionResponse(BaseModel):
     is_active: bool
     is_default: bool
     is_closed_state: bool
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ========== Ticket Category Schemas ==========
+
+class TicketCategoryDefinitionCreate(BaseModel):
+    """Schema for creating a ticket category."""
+    code: str
+    name_he: Optional[str] = None
+    name_en: Optional[str] = None
+    description: Optional[str] = None
+    is_active: bool = True
+    is_default: bool = False
+    sort_order: int = 0
+
+
+class TicketCategoryDefinitionUpdate(BaseModel):
+    """Schema for updating a ticket category."""
+    code: Optional[str] = None
+    name_he: Optional[str] = None
+    name_en: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+class TicketCategoryDefinitionResponse(BaseModel):
+    """Ticket category definition response."""
+    id: UUID
+    code: str
+    name_he: Optional[str] = None
+    name_en: Optional[str] = None
+    description: Optional[str] = None
+    is_active: bool
+    is_default: bool
     sort_order: int
     created_at: datetime
     updated_at: datetime
@@ -45,22 +99,22 @@ class TicketBase(BaseModel):
     """Base ticket fields."""
     title: str = Field(..., min_length=1, max_length=255)
     description: str = Field(..., min_length=1)
-    category: Optional[str] = None
+    category_id: Optional[UUID] = None
     priority: str = "normal"
     source_channel: str
-    reported_via: Optional[str] = None
+    reported_via: str = Field(..., description="Contact channel: phone, whatsapp, email, other")
     service_scope: str = "not_included"
     service_note: Optional[str] = None
     contact_phone: str = Field(..., min_length=1)
-    contact_name: Optional[str] = None
-    contact_email: Optional[str] = None
 
 
 class TicketCreate(TicketBase):
     """Schema for creating a ticket."""
     client_id: UUID
     site_id: UUID
-    contact_person_id: Optional[UUID] = None
+    contact_person_id: UUID  # Who opened the ticket
+    callback_contact_id: Optional[UUID] = None  # Who to call back (defaults to opener if not provided)
+    asset_id: Optional[UUID] = None  # Primary asset this ticket is about (optional)
 
     # Initiator information (will be set automatically from current user if not provided)
     initiator_type: Optional[str] = None
@@ -72,15 +126,17 @@ class TicketUpdate(BaseModel):
     """Schema for updating a ticket (all fields optional)."""
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, min_length=1)
-    category: Optional[str] = None
+    category_id: Optional[UUID] = None  # Allow category change via PATCH
     priority: Optional[str] = None
+    status_id: Optional[UUID] = None  # Allow status change via PATCH
+    assigned_to_internal_user_id: Optional[UUID] = None  # Allow assignment via PATCH
     reported_via: Optional[str] = None
     service_scope: Optional[str] = None
     service_note: Optional[str] = None
     contact_person_id: Optional[UUID] = None
-    contact_name: Optional[str] = None
+    callback_contact_id: Optional[UUID] = None
     contact_phone: Optional[str] = Field(None, min_length=1)
-    contact_email: Optional[str] = None
+    asset_id: Optional[UUID] = None  # Allow changing primary asset
 
 
 class TicketResponse(TicketBase):
@@ -90,8 +146,16 @@ class TicketResponse(TicketBase):
     client_id: UUID
     site_id: UUID
     status_id: UUID
+    status_code: Optional[str] = None
+    category_code: Optional[str] = None  # Category code for display
+    category_name: Optional[str] = None  # Category name (localized) for display
     assigned_to_internal_user_id: Optional[UUID] = None
+    assigned_to_name: Optional[str] = None  # Technician name for display
     contact_person_id: Optional[UUID] = None
+    callback_contact_id: Optional[UUID] = None
+    contact_person: Optional[ContactInfo] = None
+    callback_contact: Optional[ContactInfo] = None
+    asset_id: Optional[UUID] = None  # Primary asset this ticket is about
     closed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -103,6 +167,7 @@ class TicketResponse(TicketBase):
 class TicketDetailResponse(TicketResponse):
     """Ticket response with related objects."""
     status: TicketStatusDefinitionResponse
+    category: Optional[TicketCategoryDefinitionResponse] = None  # Full category object
     initiator: Optional[TicketInitiatorResponse] = None
 
 

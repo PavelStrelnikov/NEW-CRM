@@ -118,7 +118,7 @@ async def require_client_admin(
     Raises:
         HTTPException: If user is not a client admin
     """
-    if current_user.user_type != "client" or current_user.role != "client_admin":
+    if current_user.user_type != "client" or current_user.role != "CLIENT_ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: Client admin only"

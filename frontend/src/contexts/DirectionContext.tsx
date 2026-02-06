@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
+import { logger } from '@/utils/logger';
 
 type Direction = 'ltr' | 'rtl';
 
@@ -35,7 +36,7 @@ export const DirectionProvider: React.FC<DirectionProviderProps> = ({ children }
           i18n.changeLanguage(savedLang);
         }
       } catch (error) {
-        console.error('Failed to read language from localStorage:', error);
+        logger.error('Failed to read language from localStorage:', error);
       }
       setIsInitialized(true);
     }
@@ -57,7 +58,7 @@ export const DirectionProvider: React.FC<DirectionProviderProps> = ({ children }
     try {
       localStorage.setItem(STORAGE_KEY, i18n.language);
     } catch (error) {
-      console.error('Failed to save language to localStorage:', error);
+      logger.error('Failed to save language to localStorage:', error);
     }
   }, [i18n.language]);
 

@@ -19,6 +19,10 @@ import { useQuery } from '@tanstack/react-query';
 import { clientsApi } from '@/api/clients';
 import { ticketsApi } from '@/api/tickets';
 import { assetsApi } from '@/api/assets';
+import { portalClientsApi } from '@/api/portalClients';
+import { portalTicketsApi } from '@/api/portalTickets';
+import { portalAssetsApi } from '@/api/portalAssets';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StatCardProps {
   title: string;
@@ -81,6 +85,10 @@ const StatCard: React.FC<StatCardProps> = ({
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+
+  // Determine if we're a portal user
+  const isPortalUser = user?.user_type === 'portal';
 
   const {
     data: clientsData,
@@ -88,8 +96,13 @@ export const DashboardPage: React.FC = () => {
     error: clientsError,
     refetch: refetchClients,
   } = useQuery({
-    queryKey: ['dashboard-clients'],
-    queryFn: () => clientsApi.listClients({ page: 1, page_size: 1 }),
+    queryKey: ['dashboard-clients', isPortalUser ? 'portal' : 'admin'],
+    queryFn: async () => {
+      if (isPortalUser) {
+        return portalClientsApi.list();
+      }
+      return clientsApi.listClients({ page: 1, page_size: 1 });
+    },
   });
 
   const {
@@ -98,8 +111,13 @@ export const DashboardPage: React.FC = () => {
     error: ticketsError,
     refetch: refetchTickets,
   } = useQuery({
-    queryKey: ['dashboard-tickets'],
-    queryFn: () => ticketsApi.listTickets({ page: 1, page_size: 100 }),
+    queryKey: ['dashboard-tickets', isPortalUser ? 'portal' : 'admin'],
+    queryFn: async () => {
+      if (isPortalUser) {
+        return portalTicketsApi.list({ page: 1, page_size: 100 });
+      }
+      return ticketsApi.listTickets({ page: 1, page_size: 100 });
+    },
   });
 
   const {
@@ -108,8 +126,13 @@ export const DashboardPage: React.FC = () => {
     error: assetsError,
     refetch: refetchAssets,
   } = useQuery({
-    queryKey: ['dashboard-assets'],
-    queryFn: () => assetsApi.listAssets({ page: 1, page_size: 1 }),
+    queryKey: ['dashboard-assets', isPortalUser ? 'portal' : 'admin'],
+    queryFn: async () => {
+      if (isPortalUser) {
+        return portalAssetsApi.list({ page: 1, page_size: 1 });
+      }
+      return assetsApi.listAssets({ page: 1, page_size: 1 });
+    },
   });
 
   const totalClients = clientsData?.total ?? 0;

@@ -8,7 +8,7 @@ from uuid import UUID
 
 class LoginRequest(BaseModel):
     """Login request payload."""
-    email: EmailStr
+    email: str  # Changed from EmailStr to allow .local domains
     password: str
 
 
@@ -38,7 +38,7 @@ class InternalUserResponse(UserBase):
 
 class ClientUserResponse(UserBase):
     """Client user response."""
-    role: Literal["client_contact", "client_admin"]
+    role: Literal["CLIENT_USER", "CLIENT_CONTACT", "CLIENT_ADMIN"]
     client_id: UUID
     user_type: str = "client"
 

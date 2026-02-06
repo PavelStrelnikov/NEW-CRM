@@ -4,6 +4,7 @@
  */
 
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
+import { logger } from '@/utils/logger';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -34,7 +35,7 @@ export const ThemeModeProvider: React.FC<ThemeModeProviderProps> = ({ children }
         return saved;
       }
     } catch (error) {
-      console.error('Failed to read theme from localStorage:', error);
+      logger.error('Failed to read theme from localStorage:', error);
     }
     return 'light';
   });
@@ -44,7 +45,7 @@ export const ThemeModeProvider: React.FC<ThemeModeProviderProps> = ({ children }
     try {
       localStorage.setItem(STORAGE_KEY, mode);
     } catch (error) {
-      console.error('Failed to save theme to localStorage:', error);
+      logger.error('Failed to save theme to localStorage:', error);
     }
   }, [mode]);
 

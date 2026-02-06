@@ -50,6 +50,9 @@ def verify_client_access(
     Verify that client user has access to the linked entity.
 
     Returns True if access allowed, raises HTTPException if not.
+
+    For CLIENT_ADMIN users, checks allowed_clients relationship for multi-client access.
+    For regular CLIENT_USER, checks primary client_id only.
     """
     if current_user.user_type != "client":
         return True  # Internal users have full access
@@ -61,23 +64,55 @@ def verify_client_access(
         ticket = db.query(Ticket).filter(Ticket.id == linked_id).first()
         if ticket:
             entity_client_id = ticket.client_id
+        else:
+            raise HTTPException(status_code=404, detail="Ticket not found")
     elif linked_type == LinkedType.ASSET.value:
         asset = db.query(Asset).filter(Asset.id == linked_id).first()
         if asset:
             entity_client_id = asset.client_id
+        else:
+            raise HTTPException(status_code=404, detail="Asset not found")
     elif linked_type == LinkedType.PROJECT.value:
         project = db.query(Project).filter(Project.id == linked_id).first()
         if project:
             entity_client_id = project.client_id
+        else:
+            raise HTTPException(status_code=404, detail="Project not found")
     elif linked_type == LinkedType.SITE.value:
         site = db.query(Site).filter(Site.id == linked_id).first()
         if site:
             entity_client_id = site.client_id
+        else:
+            raise HTTPException(status_code=404, detail="Site not found")
     elif linked_type == LinkedType.CLIENT.value:
         entity_client_id = linked_id
 
-    if entity_client_id != current_user.client_id:
-        raise HTTPException(status_code=403, detail="Access denied to this entity")
+    # Verify entity_client_id was found
+    if entity_client_id is None:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    # Check if user has access to this client
+    # For CLIENT_ADMIN: check primary client_id OR allowed_clients
+    # For CLIENT_USER: check primary client_id only
+    from app.models.users import ClientUser, ClientUserClient, ClientUserRole
+
+    if entity_client_id == current_user.client_id:
+        return True  # Has access via primary client
+
+    # Check if CLIENT_ADMIN with multi-client access
+    client_user = db.query(ClientUser).filter(ClientUser.id == current_user.id).first()
+    if client_user and client_user.role == ClientUserRole.CLIENT_ADMIN:
+        # Check allowed_clients relationship
+        has_access = db.query(ClientUserClient).filter(
+            ClientUserClient.client_user_id == current_user.id,
+            ClientUserClient.client_id == entity_client_id
+        ).first() is not None
+
+        if has_access:
+            return True
+
+    # No access
+    raise HTTPException(status_code=403, detail="Access denied to this entity")
 
     return True
 

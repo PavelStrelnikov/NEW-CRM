@@ -12,7 +12,9 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { clientsApi } from '@/api/clients';
+import { portalClientsApi } from '@/api/portalClients';
 import { Site, SiteCreate, SiteUpdate } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SiteFormProps {
   open: boolean;
@@ -30,6 +32,8 @@ export const SiteForm: React.FC<SiteFormProps> = ({
   site,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isPortalUser = user?.user_type === 'portal';
   const [formData, setFormData] = useState<SiteCreate | SiteUpdate>({
     client_id: clientId,
     name: '',
@@ -66,9 +70,19 @@ export const SiteForm: React.FC<SiteFormProps> = ({
 
     try {
       if (site) {
-        await clientsApi.updateSite(site.id, formData);
+        // Route update to correct API based on user type
+        if (isPortalUser) {
+          await portalClientsApi.updateSite(site.id, formData);
+        } else {
+          await clientsApi.updateSite(site.id, formData);
+        }
       } else {
-        await clientsApi.createSite(clientId, formData as SiteCreate);
+        // Route create to correct API based on user type
+        if (isPortalUser) {
+          await portalClientsApi.createSite(formData as SiteCreate);
+        } else {
+          await clientsApi.createSite(clientId, formData as SiteCreate);
+        }
       }
       onSuccess();
     } catch (err: any) {

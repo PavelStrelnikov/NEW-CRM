@@ -4,20 +4,26 @@ import {
   ClientCreate,
   ClientUpdate,
   ClientListResponse,
+  ClientDeletionSummary,
   Site,
   SiteCreate,
   SiteUpdate,
   SiteListResponse,
+  SiteDeletionSummary,
   Contact,
   ContactCreate,
   ContactUpdate,
   ContactListResponse,
+  DeletionResponse,
 } from '@/types';
 
 export const clientsApi = {
   // Clients
   listClients: async (params?: {
     q?: string;
+    include_inactive?: boolean;
+    sort?: string;
+    order?: string;
     page?: number;
     page_size?: number;
   }): Promise<ClientListResponse> => {
@@ -42,6 +48,18 @@ export const clientsApi = {
     return response.data;
   },
 
+  getClientDeletionSummary: async (id: string): Promise<ClientDeletionSummary> => {
+    const response = await apiClient.get<ClientDeletionSummary>(`/clients/${id}/deletion-summary`);
+    return response.data;
+  },
+
+  deleteClient: async (id: string, force: boolean = false): Promise<DeletionResponse> => {
+    const response = await apiClient.delete<DeletionResponse>(`/clients/${id}`, {
+      params: { force },
+    });
+    return response.data;
+  },
+
   // Sites
   listSites: async (clientId: string): Promise<SiteListResponse> => {
     const response = await apiClient.get<Site[]>(`/clients/${clientId}/sites`);
@@ -60,6 +78,18 @@ export const clientsApi = {
 
   updateSite: async (siteId: string, data: SiteUpdate): Promise<Site> => {
     const response = await apiClient.patch<Site>(`/sites/${siteId}`, data);
+    return response.data;
+  },
+
+  getSiteDeletionSummary: async (siteId: string): Promise<SiteDeletionSummary> => {
+    const response = await apiClient.get<SiteDeletionSummary>(`/sites/${siteId}/deletion-summary`);
+    return response.data;
+  },
+
+  deleteSite: async (siteId: string, force: boolean = false): Promise<DeletionResponse> => {
+    const response = await apiClient.delete<DeletionResponse>(`/sites/${siteId}`, {
+      params: { force },
+    });
     return response.data;
   },
 

@@ -12,13 +12,19 @@ from app.db.base import Base
 
 
 class WorkType(str, enum.Enum):
-    """Types of work."""
+    """Types of work and communication activities."""
+    # Communication activities
     PHONE = "phone"
+    EMAIL = "email"
+    WHATSAPP = "whatsapp"
+
+    # Work activities
     REMOTE = "remote"
     ONSITE = "onsite"
     TRAVEL = "travel"
     REPAIR_LAB = "repair_lab"
     ADMIN = "admin"
+    OTHER = "other"
 
 
 class ItemType(str, enum.Enum):

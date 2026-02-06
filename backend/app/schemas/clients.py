@@ -2,7 +2,7 @@
 Pydantic schemas for clients domain: clients, sites, contacts, locations.
 """
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 from uuid import UUID
 from datetime import datetime
 
@@ -12,9 +12,12 @@ from datetime import datetime
 class ClientBase(BaseModel):
     """Base client fields."""
     name: str
+    tax_id: Optional[str] = None
+    main_phone: Optional[str] = None
+    main_email: Optional[str] = None
     main_address: Optional[str] = None
     notes: Optional[str] = None
-    status: str = "active"
+    is_active: bool = True
 
 
 class ClientCreate(ClientBase):
@@ -25,9 +28,12 @@ class ClientCreate(ClientBase):
 class ClientUpdate(BaseModel):
     """Schema for updating a client (all fields optional)."""
     name: Optional[str] = None
+    tax_id: Optional[str] = None
+    main_phone: Optional[str] = None
+    main_email: Optional[str] = None
     main_address: Optional[str] = None
     notes: Optional[str] = None
-    status: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class ClientResponse(ClientBase):
@@ -35,6 +41,27 @@ class ClientResponse(ClientBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_status_to_is_active(cls, data):
+        """Convert status field to is_active for frontend compatibility."""
+        if hasattr(data, 'status'):
+            # ORM model object
+            data_dict = {
+                'id': data.id,
+                'name': data.name,
+                'tax_id': data.tax_id,
+                'main_phone': data.main_phone,
+                'main_email': data.main_email,
+                'main_address': data.main_address,
+                'notes': data.notes,
+                'is_active': data.status == 'active',
+                'created_at': data.created_at,
+                'updated_at': data.updated_at,
+            }
+            return data_dict
+        return data
 
     class Config:
         from_attributes = True
@@ -46,6 +73,7 @@ class ClientListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+    total_pages: int
 
 
 # ========== Site Schemas ==========

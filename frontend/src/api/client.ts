@@ -29,9 +29,18 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
-      localStorage.removeItem('access_token');
-      window.location.href = '/login';
+      // Only logout if this is an authentication endpoint or token validation
+      // For other 401s (e.g., insufficient permissions on specific endpoint), let the component handle it
+      const url = error.config?.url || '';
+      const isAuthEndpoint = url.includes('/auth/') || url.includes('/me');
+
+      if (isAuthEndpoint) {
+        // Clear token and redirect to login only for auth failures
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
+      }
+      // For non-auth 401s (e.g., RBAC failures on specific endpoints), just pass the error to the component
+      // Component can show "Access Denied" instead of forcing logout
     }
     return Promise.reject(error);
   }

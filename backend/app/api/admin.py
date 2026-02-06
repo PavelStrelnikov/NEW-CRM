@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.tickets import TicketStatusDefinition
+from app.models.tickets import TicketStatusDefinition, TicketCategoryDefinition
 from app.models.assets import AssetType, AssetPropertyDefinition
 from app.schemas.admin import (
     TicketStatusCreate,
@@ -19,6 +19,11 @@ from app.schemas.admin import (
     AssetPropertyDefinitionCreate,
     AssetPropertyDefinitionUpdate,
     AssetPropertyDefinitionResponse
+)
+from app.schemas.tickets import (
+    TicketCategoryDefinitionCreate,
+    TicketCategoryDefinitionUpdate,
+    TicketCategoryDefinitionResponse
 )
 from app.schemas.auth import CurrentUser
 from app.auth.dependencies import get_current_active_user
@@ -500,6 +505,185 @@ def delete_property_definition(
 
     # Soft delete
     definition.is_active = False
+
+    db.commit()
+
+    return None
+
+
+# ========== Ticket Category Admin ==========
+
+@router.get("/admin/ticket-categories", response_model=List[TicketCategoryDefinitionResponse])
+def list_ticket_categories(
+    include_inactive: bool = Query(False),
+    current_user: CurrentUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    List all ticket category definitions.
+
+    **RBAC:** Admin only
+    """
+    require_admin(current_user)
+
+    query = db.query(TicketCategoryDefinition)
+    if not include_inactive:
+        query = query.filter(TicketCategoryDefinition.is_active == True)
+
+    categories = query.order_by(TicketCategoryDefinition.sort_order).all()
+    return categories
+
+
+@router.post("/admin/ticket-categories", response_model=TicketCategoryDefinitionResponse, status_code=201)
+def create_ticket_category(
+    category_data: TicketCategoryDefinitionCreate,
+    current_user: CurrentUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new ticket category definition.
+
+    **RBAC:** Admin only
+    """
+    require_admin(current_user)
+
+    # Check if code already exists
+    existing = db.query(TicketCategoryDefinition).filter(
+        TicketCategoryDefinition.code == category_data.code
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Category code already exists")
+
+    # Create category
+    category = TicketCategoryDefinition(
+        code=category_data.code,
+        name_he=category_data.name_he,
+        name_en=category_data.name_en,
+        description=category_data.description,
+        is_active=category_data.is_active,
+        is_default=False,  # Cannot set default on create
+        sort_order=category_data.sort_order
+    )
+
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+
+    return category
+
+
+@router.get("/admin/ticket-categories/{category_id}", response_model=TicketCategoryDefinitionResponse)
+def get_ticket_category(
+    category_id: UUID,
+    current_user: CurrentUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get a ticket category definition.
+
+    **RBAC:** Admin only
+    """
+    require_admin(current_user)
+
+    category = db.query(TicketCategoryDefinition).filter(
+        TicketCategoryDefinition.id == category_id
+    ).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    return category
+
+
+@router.patch("/admin/ticket-categories/{category_id}", response_model=TicketCategoryDefinitionResponse)
+def update_ticket_category(
+    category_id: UUID,
+    category_data: TicketCategoryDefinitionUpdate,
+    current_user: CurrentUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update a ticket category definition.
+
+    **RBAC:** Admin only
+    """
+    require_admin(current_user)
+
+    category = db.query(TicketCategoryDefinition).filter(
+        TicketCategoryDefinition.id == category_id
+    ).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    # Update fields
+    update_data = category_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(category, key, value)
+
+    db.commit()
+    db.refresh(category)
+
+    return category
+
+
+@router.post("/admin/ticket-categories/{category_id}/set-default", response_model=TicketCategoryDefinitionResponse)
+def set_default_category(
+    category_id: UUID,
+    current_user: CurrentUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Set a category as the default (unsets others).
+
+    **RBAC:** Admin only
+    """
+    require_admin(current_user)
+
+    category = db.query(TicketCategoryDefinition).filter(
+        TicketCategoryDefinition.id == category_id
+    ).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    # Unset all other defaults
+    db.query(TicketCategoryDefinition).update({"is_default": False})
+
+    # Set this one as default
+    category.is_default = True
+
+    db.commit()
+    db.refresh(category)
+
+    return category
+
+
+@router.delete("/admin/ticket-categories/{category_id}", status_code=204)
+def delete_ticket_category(
+    category_id: UUID,
+    current_user: CurrentUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a ticket category definition (soft delete - set is_active=False).
+
+    **RBAC:** Admin only
+    """
+    require_admin(current_user)
+
+    category = db.query(TicketCategoryDefinition).filter(
+        TicketCategoryDefinition.id == category_id
+    ).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    # Cannot delete if it's the default
+    if category.is_default:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete default category. Set another category as default first."
+        )
+
+    # Soft delete
+    category.is_active = False
 
     db.commit()
 

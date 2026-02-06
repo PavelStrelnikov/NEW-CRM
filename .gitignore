@@ -1,10 +1,13 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .env
 .env.*
 venv/
 .venv/
+*.egg-info/
 
 # Node / Frontend
 node_modules/
@@ -17,10 +20,60 @@ dist/
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # DB / volumes
 postgres_data/
+
+# Claude SDK temporary files
+tmpclaude-*/
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Malformed pip version files
+=*
+
+# Backup archives
+backups/
+
+# Debug reports and temporary test files
+*_FIX_REPORT.md
+*_SUMMARY.md
+*_COMPLETE.md
+*_CHECKLIST.md
+*_GUIDE.md
+BUGFIX_*.md
+QA_*.md
+TESTING_*.md
+PORTAL_*.md
+PROJECT_REVIEW.md
+RESTART_*.md
+
+# Temporary test scripts in root
+/test_*.js
+/test_*.py
+/output*.txt
+
+# Playwright artifacts
+playwright-report/
+test-results/
+
+# Uploaded files (production data)
+backend/data/uploads/
+
+# Archive directory
+archive/

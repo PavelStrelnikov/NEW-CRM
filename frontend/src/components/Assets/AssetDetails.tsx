@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { logger } from '@/utils/logger';
 import { copyToClipboard as copyText } from '@/utils/clipboard';
 import {
@@ -46,7 +46,7 @@ import { portalAssetsApi } from '@/api/portalAssets';
 import { clientsApi } from '@/api/clients';
 import { portalClientsApi } from '@/api/portalClients';
 import { hikvisionApi } from '@/api/hikvision';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { BackButton } from '@/components/Common/BackButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RouterIcon from '@mui/icons-material/Router';
@@ -72,11 +72,19 @@ import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import { format } from 'date-fns';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AssetForm } from './AssetForm';
 import { HealthStatusIcon } from './HealthStatusIcon';
+import { RouterConfigStatusIcon } from './RouterConfigStatusIcon';
+import { RouterDetailsView } from './RouterDetailsView';
+import { AccessPointDetailsView } from './AccessPointDetailsView';
+import { SwitchDetailsView } from './SwitchDetailsView';
+import { getRouterConfigStatus } from '@/utils/routerConfigStatus';
+import { getAPConfigStatus } from '@/utils/accessPointConfigStatus';
+import { getSwitchConfigStatus } from '@/utils/switchConfigStatus';
 import { TicketForm } from '../Tickets/TicketForm';
 import { TimeSyncDialog } from './TimeSyncDialog';
 import { AssetProperty, AssetUsageSummary, HikvisionProbeResponse, HealthStatus, NVRChannelBulkUpdate, Client, Site, ChannelWithStatus } from '@/types';
@@ -242,7 +250,14 @@ export const AssetDetails: React.FC = () => {
 
   const [currentTab, setCurrentTab] = useState(0);
   const [editFormOpen, setEditFormOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
+  const toggleSecretVisibility = useCallback((key: string) => {
+    setVisibleSecrets(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
   const [lastProbeResult, setLastProbeResult] = useState<HikvisionProbeResponse | null>(null);
   const [channelAccordionExpanded, setChannelAccordionExpanded] = useState(false);
   const [ticketFormOpen, setTicketFormOpen] = useState(false);
@@ -262,6 +277,12 @@ export const AssetDetails: React.FC = () => {
   const [channelEditMode, setChannelEditMode] = useState(false);
   const [channelEdits, setChannelEdits] = useState<Map<number, NVRChannelBulkUpdate>>(new Map());
 
+  // Snapshot preview state
+  const [snapshotChannel, setSnapshotChannel] = useState<number | null>(null);
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
+
   // Copy to clipboard helper
   const handleCopy = async (text: string) => {
     const success = await copyText(text);
@@ -270,6 +291,37 @@ export const AssetDetails: React.FC = () => {
     } else {
       showError(t('app.copyError'));
     }
+  };
+
+  // Snapshot preview handler
+  const handleSnapshotClick = async (channelNum: number) => {
+    if (!id) return;
+    // Cleanup previous snapshot URL
+    if (snapshotUrl) {
+      URL.revokeObjectURL(snapshotUrl);
+    }
+    setSnapshotChannel(channelNum);
+    setSnapshotUrl(null);
+    setSnapshotError(null);
+    setSnapshotLoading(true);
+    try {
+      const blob = await hikvisionApi.getSnapshot(id, channelNum);
+      const url = URL.createObjectURL(blob);
+      setSnapshotUrl(url);
+    } catch (err: any) {
+      setSnapshotError(err?.response?.data?.detail || err?.message || t('assets.snapshotError'));
+    } finally {
+      setSnapshotLoading(false);
+    }
+  };
+
+  const handleSnapshotClose = () => {
+    if (snapshotUrl) {
+      URL.revokeObjectURL(snapshotUrl);
+    }
+    setSnapshotChannel(null);
+    setSnapshotUrl(null);
+    setSnapshotError(null);
   };
 
   // Check if user can edit assets
@@ -301,7 +353,7 @@ export const AssetDetails: React.FC = () => {
     queryFn: async () => {
       if (isPortalUser) {
         const result = await portalClientsApi.get(asset!.client_id);
-        return { id: result.id, name: result.name, status: result.is_active ? 'active' : 'inactive' } as Client;
+        return { id: result.id, name: result.name, is_active: result.is_active, created_at: '', updated_at: '' } as Client;
       }
       return clientsApi.getClient(asset!.client_id);
     },
@@ -314,7 +366,7 @@ export const AssetDetails: React.FC = () => {
     queryFn: async () => {
       if (isPortalUser) {
         const result = await portalClientsApi.getSite(asset!.site_id);
-        return { id: result.id, name: result.name, client_id: result.client_id, address: result.address, city: result.city } as Site;
+        return { id: result.id, name: result.name, client_id: result.client_id, address: result.address, is_default: false, created_at: '', updated_at: '' } as Site;
       }
       return clientsApi.getSite(asset!.site_id);
     },
@@ -332,6 +384,29 @@ export const AssetDetails: React.FC = () => {
 
   // Fetch NVR disks if this is an NVR/DVR - use portal API for portal users
   const isNvrDvr = asset?.asset_type_code === 'NVR' || asset?.asset_type_code === 'DVR';
+  const isRouterType = asset?.asset_type_code === 'ROUTER';
+  const isAccessPointType = asset?.asset_type_code === 'ACCESS_POINT';
+  const isSwitchType = asset?.asset_type_code === 'SWITCH';
+  const isSimplifiedType = isRouterType || isAccessPointType || isSwitchType;
+
+  const routerConfigResult = useMemo(() => {
+    if (!isRouterType) return null;
+    return getRouterConfigStatus(getProp);
+  }, [isRouterType, propertyMap]);
+
+  const apConfigResult = useMemo(() => {
+    if (!isAccessPointType) return null;
+    return getAPConfigStatus(getProp);
+  }, [isAccessPointType, propertyMap]);
+
+  const switchConfigResult = useMemo(() => {
+    if (!isSwitchType) return null;
+    return getSwitchConfigStatus(getProp);
+  }, [isSwitchType, propertyMap]);
+
+  // Unified config result for simplified types (Router, AP, Switch)
+  const configResult = routerConfigResult || apConfigResult || switchConfigResult;
+
   const { data: disks } = useQuery({
     queryKey: ['asset-disks', id, isPortalUser],
     queryFn: () => isPortalUser
@@ -393,13 +468,20 @@ export const AssetDetails: React.FC = () => {
         const portalResult = await portalAssetsApi.probe(id);
         // Create a compatible response object for UI
         return {
-          meta: { success: portalResult.success },
+          meta: { success: portalResult.success, errors: {} },
+          device: {} as any,
+          network: { lan_ips: [] },
+          storage: { disk_count: 0, disks: [] },
+          cameras: { total: 0, online: 0, offline: 0, recording_ok: 0, recording_missing: 0, channels: [] },
           health_summary: {
-            overall_status: portalResult.health_status,
+            total_hdd: 0, healthy_hdd: 0, critical_hdd: 0,
+            total_channels: 0, configured_channels: 0, online_channels: 0,
+            offline_channels: 0, unconfigured_channels: 0, channels_with_recordings: 0,
+            overall_status: portalResult.health_status as any,
             issues: portalResult.health_issues,
           },
           _portal_message: portalResult.message,
-        } as HikvisionProbeResponse;
+        } as HikvisionProbeResponse & { _portal_message: string };
       }
       return hikvisionApi.probeAndSaveAsset(id);
     },
@@ -765,14 +847,7 @@ export const AssetDetails: React.FC = () => {
           alignItems: 'center',
           width: '100%',
         }}>
-          <Button
-            size="small"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/assets')}
-            sx={{ minWidth: 'auto' }}
-          >
-            {t('app.back')}
-          </Button>
+          <BackButton fallbackPath={`${basePrefix}/assets`} />
           {canEditAsset && (
             <Button
               variant="outlined"
@@ -848,11 +923,15 @@ export const AssetDetails: React.FC = () => {
             flexWrap: 'wrap',
             mb: 1,
           }}>
-            <HealthStatusIcon
-              status={(asset.health_status as HealthStatus) || 'unknown'}
-              issues={asset.health_issues}
-              size="medium"
-            />
+            {isSimplifiedType && configResult ? (
+              <RouterConfigStatusIcon configResult={configResult} size="medium" />
+            ) : (
+              <HealthStatusIcon
+                status={(asset.health_status as HealthStatus) || 'unknown'}
+                issues={asset.health_issues}
+                size="medium"
+              />
+            )}
             <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
               {asset.label}
             </Typography>
@@ -968,25 +1047,29 @@ export const AssetDetails: React.FC = () => {
               </Typography>
             </Box>
 
-            {/* Manufacturer */}
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                {t('assets.manufacturer')}
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>
-                {asset.manufacturer || '—'}
-              </Typography>
-            </Box>
+            {/* Manufacturer - hidden for simplified types (Router, AP, Switch) */}
+            {!isSimplifiedType && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  {t('assets.manufacturer')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>
+                  {asset.manufacturer || '—'}
+                </Typography>
+              </Box>
+            )}
 
-            {/* Model */}
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                {t('assets.model')}
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>
-                {asset.model || '—'}
-              </Typography>
-            </Box>
+            {/* Model - hidden for simplified types (Router, AP, Switch) */}
+            {!isSimplifiedType && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  {t('assets.model')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>
+                  {asset.model || '—'}
+                </Typography>
+              </Box>
+            )}
           </Box>
 
           {/* Notes - if exists, show on separate line */}
@@ -1209,13 +1292,13 @@ export const AssetDetails: React.FC = () => {
                                   sx={{ fontFamily: MONO_FONT, fontWeight: 500, fontSize: '0.9375rem', textAlign: 'left' }}
                                 >
                                   {getProp('device_password')
-                                    ? (showPassword ? getProp('device_password') : '••••••••')
+                                    ? (visibleSecrets.has('device_password') ? getProp('device_password') : '••••••••')
                                     : '—'}
                                 </Typography>
                                 {getProp('device_password') && (
                                   <>
-                                    <IconButton size="small" onClick={() => setShowPassword(!showPassword)} sx={{ p: 0.25, opacity: 0.6 }}>
-                                      {showPassword ? <VisibilityOffIcon sx={{ fontSize: 14 }} /> : <VisibilityIcon sx={{ fontSize: 14 }} />}
+                                    <IconButton size="small" onClick={() => toggleSecretVisibility('device_password')} sx={{ p: 0.25, opacity: 0.6 }}>
+                                      {visibleSecrets.has('device_password') ? <VisibilityOffIcon sx={{ fontSize: 14 }} /> : <VisibilityIcon sx={{ fontSize: 14 }} />}
                                     </IconButton>
                                     <IconButton size="small" onClick={() => handleCopy(getProp('device_password'))} sx={{ p: 0.25, opacity: 0.6 }}>
                                       <ContentCopyIcon sx={{ fontSize: 14 }} />
@@ -1521,6 +1604,10 @@ export const AssetDetails: React.FC = () => {
                                     {t('assets.recordingStatus')}
                                   </TableCell>
                                 )}
+                                {!channelEditMode && !isPortalUser && (
+                                  <TableCell sx={{ fontWeight: 600, width: 40, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>
+                                  </TableCell>
+                                )}
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -1606,6 +1693,22 @@ export const AssetDetails: React.FC = () => {
                                           />
                                         </TableCell>
                                       )}
+                                      {!channelEditMode && !isPortalUser && (
+                                        <TableCell sx={{ textAlign: 'center', py: 0.25 }}>
+                                          <Tooltip title={channel.is_online ? t('assets.snapshot') : t('assets.snapshotNotAvailable')}>
+                                            <span>
+                                              <IconButton
+                                                size="small"
+                                                onClick={() => handleSnapshotClick(channel.channel_number)}
+                                                disabled={!channel.is_online}
+                                                sx={{ p: 0.25 }}
+                                              >
+                                                <CameraAltIcon sx={{ fontSize: 16 }} />
+                                              </IconButton>
+                                            </span>
+                                          </Tooltip>
+                                        </TableCell>
+                                      )}
                                     </TableRow>
                                   );
                                 })}
@@ -1626,15 +1729,37 @@ export const AssetDetails: React.FC = () => {
                         />
                         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 1 }}>
                           {remainingProperties.map((prop) => (
-                            <CompactField
-                              key={prop.key}
-                              label={prop.label}
-                              value={
-                                prop.data_type === 'secret' ? '••••••••' :
-                                prop.data_type === 'bool' ? (prop.value ? t('assets.yes') : t('assets.no')) :
-                                prop.value?.toString()
-                              }
-                            />
+                            prop.data_type === 'secret' ? (
+                              <Box key={prop.key} sx={{ minWidth: 0 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, mb: 0.25, fontSize: '0.8rem', textTransform: 'uppercase' }}>
+                                  {prop.label}
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                                  <Typography variant="body2" dir="ltr" sx={{ fontFamily: 'monospace', fontWeight: 500, fontSize: '0.9375rem', textAlign: 'left' }}>
+                                    {prop.value ? (visibleSecrets.has(prop.key) ? prop.value?.toString() : '••••••••') : '—'}
+                                  </Typography>
+                                  {prop.value && (
+                                    <>
+                                      <IconButton size="small" onClick={() => toggleSecretVisibility(prop.key)} sx={{ p: 0.25, opacity: 0.6 }}>
+                                        {visibleSecrets.has(prop.key) ? <VisibilityOffIcon sx={{ fontSize: 14 }} /> : <VisibilityIcon sx={{ fontSize: 14 }} />}
+                                      </IconButton>
+                                      <IconButton size="small" onClick={() => handleCopy(prop.value?.toString() || '')} sx={{ p: 0.25, opacity: 0.6 }}>
+                                        <ContentCopyIcon sx={{ fontSize: 14 }} />
+                                      </IconButton>
+                                    </>
+                                  )}
+                                </Box>
+                              </Box>
+                            ) : (
+                              <CompactField
+                                key={prop.key}
+                                label={prop.label}
+                                value={
+                                  prop.data_type === 'bool' ? (prop.value ? t('assets.yes') : t('assets.no')) :
+                                  prop.value?.toString()
+                                }
+                              />
+                            )
                           ))}
                         </Box>
                       </CardContent>
@@ -1749,21 +1874,70 @@ export const AssetDetails: React.FC = () => {
                 </Card>
               </Grid>
             </Grid>
+          ) : isRouterType && asset.properties && asset.properties.length > 0 ? (
+            /* Router assets: Dedicated 4-card layout */
+            <RouterDetailsView
+              getProp={getProp}
+              visibleSecrets={visibleSecrets}
+              toggleSecretVisibility={toggleSecretVisibility}
+              handleCopy={handleCopy}
+              configResult={routerConfigResult!}
+            />
+          ) : isAccessPointType && asset.properties && asset.properties.length > 0 ? (
+            /* Access Point assets: Dedicated layout */
+            <AccessPointDetailsView
+              getProp={getProp}
+              visibleSecrets={visibleSecrets}
+              toggleSecretVisibility={toggleSecretVisibility}
+              handleCopy={handleCopy}
+              configResult={apConfigResult!}
+            />
+          ) : isSwitchType && asset.properties && asset.properties.length > 0 ? (
+            /* Switch assets: Dedicated layout */
+            <SwitchDetailsView
+              getProp={getProp}
+              visibleSecrets={visibleSecrets}
+              toggleSecretVisibility={toggleSecretVisibility}
+              handleCopy={handleCopy}
+              configResult={switchConfigResult!}
+            />
           ) : asset.properties && asset.properties.length > 0 ? (
             /* Non-NVR/DVR assets: Show standard property grid */
             <Card variant="outlined">
               <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 1 }}>
                   {asset.properties.map((prop) => (
-                    <CompactField
-                      key={prop.key}
-                      label={prop.label}
-                      value={
-                        prop.data_type === 'secret' ? '••••••••' :
-                        prop.data_type === 'bool' ? (prop.value ? t('assets.yes') : t('assets.no')) :
-                        prop.value?.toString()
-                      }
-                    />
+                    prop.data_type === 'secret' ? (
+                      <Box key={prop.key} sx={{ minWidth: 0 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, mb: 0.25, fontSize: '0.8rem', textTransform: 'uppercase' }}>
+                          {prop.label}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                          <Typography variant="body2" dir="ltr" sx={{ fontFamily: 'monospace', fontWeight: 500, fontSize: '0.9375rem', textAlign: 'left' }}>
+                            {prop.value ? (visibleSecrets.has(prop.key) ? prop.value?.toString() : '••••••••') : '—'}
+                          </Typography>
+                          {prop.value && (
+                            <>
+                              <IconButton size="small" onClick={() => toggleSecretVisibility(prop.key)} sx={{ p: 0.25, opacity: 0.6 }}>
+                                {visibleSecrets.has(prop.key) ? <VisibilityOffIcon sx={{ fontSize: 14 }} /> : <VisibilityIcon sx={{ fontSize: 14 }} />}
+                              </IconButton>
+                              <IconButton size="small" onClick={() => handleCopy(prop.value?.toString() || '')} sx={{ p: 0.25, opacity: 0.6 }}>
+                                <ContentCopyIcon sx={{ fontSize: 14 }} />
+                              </IconButton>
+                            </>
+                          )}
+                        </Box>
+                      </Box>
+                    ) : (
+                      <CompactField
+                        key={prop.key}
+                        label={prop.label}
+                        value={
+                          prop.data_type === 'bool' ? (prop.value ? t('assets.yes') : t('assets.no')) :
+                          prop.value?.toString()
+                        }
+                      />
+                    )
                   ))}
                 </Box>
               </CardContent>
@@ -2143,6 +2317,51 @@ export const AssetDetails: React.FC = () => {
           onSyncSuccess={handleTimeSyncSuccess}
         />
       )}
+
+      {/* Snapshot Preview Dialog */}
+      <Dialog
+        open={snapshotChannel !== null}
+        onClose={handleSnapshotClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          {t('assets.snapshotTitle', { channel: snapshotChannel })}
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', minHeight: 200 }}>
+          {snapshotLoading && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 4 }}>
+              <CircularProgress size={40} />
+              <Typography variant="body2" color="text.secondary">
+                {t('assets.snapshotLoading')}
+              </Typography>
+            </Box>
+          )}
+          {snapshotError && (
+            <Alert severity="error" sx={{ my: 2 }}>
+              {snapshotError}
+            </Alert>
+          )}
+          {snapshotUrl && (
+            <Box
+              component="img"
+              src={snapshotUrl}
+              alt={`Snapshot D${snapshotChannel}`}
+              sx={{
+                maxWidth: '100%',
+                maxHeight: '70vh',
+                borderRadius: 1,
+                boxShadow: 1,
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleSnapshotClose}>
+            {t('app.close')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

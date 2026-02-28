@@ -140,10 +140,10 @@ export const ticketsApi = {
     const response = await apiClient.get(`/tickets/${ticketId}/assets`);
     return response.data;
   },
-};
 
-// Aliases for compatibility with portal API interface
-ticketsApi.list = ticketsApi.listTickets;
-ticketsApi.get = ticketsApi.getTicket;
-ticketsApi.create = ticketsApi.createTicket;
-ticketsApi.update = ticketsApi.updateTicket;
+  // Aliases for compatibility with portal API interface
+  get list() { return this.listTickets; },
+  get get() { return this.getTicket; },
+  get create() { return this.createTicket; },
+  get update() { return this.updateTicket; },
+};

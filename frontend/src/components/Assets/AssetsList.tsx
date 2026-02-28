@@ -35,6 +35,9 @@ import {
   FilterList as FilterListIcon,
   Business as BusinessIcon,
   LocationOn as LocationIcon,
+  Router as RouterIconMui,
+  Wifi as WifiIconMui,
+  Hub as HubIconMui,
 } from '@mui/icons-material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -275,18 +278,38 @@ export const AssetsList: React.FC = () => {
         borderRadius: 2,
       }}
     >
-      <CardActionArea onClick={() => navigate(`${basePath}/${asset.id}`)}>
+      <CardActionArea onClick={() => navigate(`${basePath}/${asset.id}`, { state: { from: location.pathname + location.search } })}>
         <CardContent sx={{ p: 2 }}>
           {/* Header: Label + Health status */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
             <Typography variant="subtitle1" fontWeight={600} color="primary.main">
               {asset.label}
             </Typography>
-            <HealthStatusIcon
-              status={asset.health_status as HealthStatus || 'unknown'}
-              issues={asset.health_issues}
-              size="small"
-            />
+            {['ROUTER', 'ACCESS_POINT', 'SWITCH'].includes(asset.asset_type_code) ? (
+              <Box sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                bgcolor: 'rgba(25, 118, 210, 0.08)',
+              }}>
+                {asset.asset_type_code === 'ROUTER' ? (
+                  <RouterIconMui sx={{ fontSize: 18, color: 'primary.main' }} />
+                ) : asset.asset_type_code === 'ACCESS_POINT' ? (
+                  <WifiIconMui sx={{ fontSize: 18, color: 'primary.main' }} />
+                ) : (
+                  <HubIconMui sx={{ fontSize: 18, color: 'primary.main' }} />
+                )}
+              </Box>
+            ) : (
+              <HealthStatusIcon
+                status={asset.health_status as HealthStatus || 'unknown'}
+                issues={asset.health_issues}
+                size="small"
+              />
+            )}
           </Box>
 
           {/* Type + Model */}
@@ -790,15 +813,35 @@ export const AssetsList: React.FC = () => {
                         bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04),
                       },
                     }}
-                    onClick={() => navigate(`${basePath}/${asset.id}`)}
+                    onClick={() => navigate(`${basePath}/${asset.id}`, { state: { from: location.pathname + location.search } })}
                   >
                     {/* Health Status Cell */}
                     <TableCell sx={{ textAlign: 'center' }}>
-                      <HealthStatusIcon
-                        status={asset.health_status as HealthStatus || 'unknown'}
-                        issues={asset.health_issues}
-                        size="small"
-                      />
+                      {['ROUTER', 'ACCESS_POINT', 'SWITCH'].includes(asset.asset_type_code) ? (
+                        <Box sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          bgcolor: 'rgba(25, 118, 210, 0.08)',
+                        }}>
+                          {asset.asset_type_code === 'ROUTER' ? (
+                            <RouterIconMui sx={{ fontSize: 18, color: 'primary.main' }} />
+                          ) : asset.asset_type_code === 'ACCESS_POINT' ? (
+                            <WifiIconMui sx={{ fontSize: 18, color: 'primary.main' }} />
+                          ) : (
+                            <HubIconMui sx={{ fontSize: 18, color: 'primary.main' }} />
+                          )}
+                        </Box>
+                      ) : (
+                        <HealthStatusIcon
+                          status={asset.health_status as HealthStatus || 'unknown'}
+                          issues={asset.health_issues}
+                          size="small"
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight={500} color="primary.main">

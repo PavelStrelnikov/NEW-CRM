@@ -34,7 +34,7 @@ import { assetsApi } from '@/api/assets';
 import { portalAssetsApi } from '@/api/portalAssets';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatIsraelTime } from '@/utils/timezone';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { BackButton } from '@/components/Common/BackButton';
 import EditIcon from '@mui/icons-material/Edit';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
@@ -376,9 +376,7 @@ export const TicketDetails: React.FC = () => {
     <Box sx={{ maxWidth: 1600, mx: 'auto' }}>
       {/* Top Bar: Back + Edit */}
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <IconButton onClick={() => navigate('/tickets')}>
-          <ArrowBackIcon sx={{ transform: isRTL ? 'rotate(180deg)' : 'none' }} />
-        </IconButton>
+        <BackButton fallbackPath={`${basePrefix}/tickets`} iconOnly />
         {isMobile ? (
           <IconButton
             color="primary"
@@ -1218,7 +1216,7 @@ export const TicketDetails: React.FC = () => {
                 <Box sx={{ flex: 1 }}>
                   <Link
                     component="button"
-                    onClick={() => navigate(`${assetsBasePath}/${linkedAsset.id}`)}
+                    onClick={() => navigate(`${assetsBasePath}/${linkedAsset.id}`, { state: { from: location.pathname + location.search } })}
                     sx={{
                       textDecoration: 'none',
                       '&:hover': { textDecoration: 'underline' }

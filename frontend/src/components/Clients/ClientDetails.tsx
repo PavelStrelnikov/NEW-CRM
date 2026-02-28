@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi } from '@/api/clients';
 import { portalClientsApi } from '@/api/portalClients';
 import { ClientForm } from './ClientForm';
@@ -29,7 +29,7 @@ import { SitesList } from './SitesList';
 import { ContactsList } from './ContactsList';
 import { ClientAssetsList } from './ClientAssetsList';
 import { ConfirmDeleteDialog } from '../Common/ConfirmDeleteDialog';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { BackButton } from '@/components/Common/BackButton';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -49,12 +49,12 @@ const MONO_FONT = '"SF Mono", "Monaco", "Consolas", "Liberation Mono", "Courier 
 export const ClientDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { isMobile, isDesktop } = useResponsive();
-  const isRTL = i18n.language === 'he';
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -73,6 +73,7 @@ export const ClientDetails: React.FC = () => {
   // Check if user is admin (only admins can delete)
   const isAdmin = user?.role === 'admin';
   const isPortalUser = user?.user_type === 'portal';
+  const basePrefix = location.pathname.startsWith('/portal') ? '/portal' : '/admin';
 
   const { data: client, isLoading, error, refetch } = useQuery({
     queryKey: ['client', id, isPortalUser ? 'portal' : 'admin'],
@@ -93,7 +94,7 @@ export const ClientDetails: React.FC = () => {
     onSuccess: () => {
       showSuccess(t('delete.success'));
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      navigate('/clients');
+      navigate(`${basePrefix}/clients`);
     },
     onError: (error: any) => {
       showError(error?.response?.data?.detail || t('delete.error'));
@@ -141,14 +142,7 @@ export const ClientDetails: React.FC = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
       }}>
-        <Button
-          size="small"
-          startIcon={<ArrowBackIcon sx={{ transform: isRTL ? 'rotate(180deg)' : 'none' }} />}
-          onClick={() => navigate('/clients')}
-          sx={{ minWidth: 'auto' }}
-        >
-          {t('app.back')}
-        </Button>
+        <BackButton fallbackPath={`${basePrefix}/clients`} />
 
         {/* Actions */}
         {isMobile ? (

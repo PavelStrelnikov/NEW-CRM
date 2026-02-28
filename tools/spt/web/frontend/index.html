@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPT - Speech to Ticket</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎤 Speech Processing Test</h1>
+            <p class="subtitle">Voice → Transcript → Ticket</p>
+        </header>
+
+        <main>
+            <!-- Recording Section -->
+            <section class="recording-section">
+                <div class="status-indicator">
+                    <span id="status-text">Нажмите на микрофон и говорите</span>
+                </div>
+
+                <div class="controls">
+                    <button id="mic-button" class="mic-button" title="Start Recording">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        </svg>
+                    </button>
+
+                    <button id="stop-button" class="stop-button hidden" title="Stop Recording">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="6" width="12" height="12" rx="2"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="recording-timer hidden">
+                    <span id="timer">00:00</span>
+                </div>
+            </section>
+
+            <!-- Settings -->
+            <section class="settings-section">
+                <div class="setting">
+                    <label for="output-language">Output Language:</label>
+                    <select id="output-language">
+                        <option value="he" selected>עברית (Hebrew)</option>
+                        <option value="ru">Русский (Russian)</option>
+                    </select>
+                </div>
+
+                <div class="setting">
+                    <label for="force-translation">
+                        <input type="checkbox" id="force-translation" checked>
+                        Force Translation
+                    </label>
+                </div>
+            </section>
+
+            <!-- Convert Button -->
+            <section class="action-section">
+                <button id="convert-button" class="convert-button hidden" disabled>
+                    ✨ Convert to Ticket
+                </button>
+            </section>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Processing audio...</p>
+            </div>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-section hidden">
+                <!-- Detected Language -->
+                <div class="result-header">
+                    <span class="badge" id="detected-language-badge"></span>
+                </div>
+
+                <!-- Raw Transcript -->
+                <div class="result-box">
+                    <label for="raw-text">🎤 Raw Transcript</label>
+                    <textarea
+                        id="raw-text"
+                        class="result-textarea"
+                        readonly
+                        placeholder="Raw transcription will appear here..."
+                    ></textarea>
+                </div>
+
+                <!-- Translated Text (if applicable) -->
+                <div id="translated-box" class="result-box hidden">
+                    <label for="translated-text">🌐 Translated Text</label>
+                    <textarea
+                        id="translated-text"
+                        class="result-textarea"
+                        readonly
+                        placeholder="Translation will appear here..."
+                    ></textarea>
+                </div>
+
+                <!-- Normalized Ticket -->
+                <div class="result-box">
+                    <label for="normalized-text">✅ Normalized Ticket Text</label>
+                    <textarea
+                        id="normalized-text"
+                        class="result-textarea editable"
+                        placeholder="Normalized ticket text will appear here..."
+                    ></textarea>
+                </div>
+
+                <!-- Actions -->
+                <div class="result-actions">
+                    <button id="copy-button" class="secondary-button">
+                        📋 Copy to Clipboard
+                    </button>
+                    <button id="reset-button" class="secondary-button">
+                        🔄 Start Over
+                    </button>
+                </div>
+            </section>
+
+            <!-- Error Display -->
+            <div id="error-message" class="error-message hidden"></div>
+        </main>
+
+        <footer>
+            <p>SPT v1.0.0 | Speech Processing Test | Sandbox Environment</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

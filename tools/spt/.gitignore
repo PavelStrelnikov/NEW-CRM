@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Audio samples (if large)
+audio_samples/*.mp3
+audio_samples/*.wav
+audio_samples/*.m4a
+!audio_samples/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+output/
+results/

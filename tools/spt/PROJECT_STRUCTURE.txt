@@ -1,0 +1,142 @@
+Speech Processing Test (SPT) - Project Structure
+================================================
+
+tools/spt/
+│
+├── 📂 app/                          # Application entry point
+│   ├── __init__.py                  # Package marker
+│   └── main.py                      # CLI interface & pipeline orchestrator
+│
+├── 📂 services/                     # Core business logic services
+│   ├── __init__.py                  # Package marker
+│   ├── speech_to_text.py            # Gemini-based audio transcription
+│   ├── translate.py                 # Gemini-based translation
+│   └── normalize_ticket.py          # AI-powered text normalization
+│
+├── 📂 prompts/                      # Language-specific prompts
+│   ├── normalize_ru.txt             # Russian normalization prompt
+│   └── normalize_he.txt             # Hebrew normalization prompt
+│
+├── 📂 audio_samples/                # Test audio files directory
+│   └── .gitkeep                     # Ensures directory is tracked
+│
+├── 📄 .env                          # Environment configuration (NOT in git)
+├── 📄 .env.example                  # Environment template
+├── 📄 .gitignore                    # Git ignore rules
+├── 📄 requirements.txt              # Python dependencies
+│
+├── 📖 README.md                     # Main documentation
+├── 📖 QUICKSTART.md                 # 5-minute setup guide
+├── 📖 ARCHITECTURE.md               # Technical architecture docs
+├── 📖 EXAMPLES.md                   # Usage examples & scenarios
+├── 📄 PROJECT_STRUCTURE.txt         # This file
+│
+└── 🧪 test_text_only.py             # Text-only testing (no audio)
+
+
+FILE COUNTS
+-----------
+Python files:       6
+Documentation:      5
+Configuration:      4
+Prompts:            2
+Tests:              1
+---
+TOTAL:             18 files
+
+
+KEY FILES EXPLAINED
+-------------------
+
+🚀 ENTRY POINTS
+  • app/main.py              - Start here! Main CLI application
+  • test_text_only.py        - Quick testing without audio files
+
+🧩 CORE SERVICES
+  • speech_to_text.py        - Converts audio → text + language
+  • translate.py             - Translates between ru/he/en
+  • normalize_ticket.py      - Casual speech → professional ticket
+
+⚙️ CONFIGURATION
+  • .env                     - Your secrets (API key, settings)
+  • .env.example             - Template for .env
+  • requirements.txt         - pip install -r requirements.txt
+
+📚 DOCUMENTATION
+  • README.md                - Complete guide (read first!)
+  • QUICKSTART.md            - Get running in 5 minutes
+  • ARCHITECTURE.md          - Deep dive into design
+  • EXAMPLES.md              - Real-world usage examples
+
+🎨 PROMPTS
+  • normalize_ru.txt         - Russian ticket formatting rules
+  • normalize_he.txt         - Hebrew ticket formatting rules
+
+
+EXECUTION FLOW
+--------------
+
+1. User runs:     python app/main.py audio.mp3
+
+2. main.py loads: .env configuration
+
+3. Pipeline runs:
+   ├─> speech_to_text.py      (audio → text + lang)
+   ├─> translate.py           (if needed)
+   └─> normalize_ticket.py    (text → ticket)
+
+4. Output:        Formatted results to console
+
+
+DEPENDENCIES
+------------
+
+External packages (see requirements.txt):
+  • google-generativeai  - Gemini API client
+  • python-dotenv        - Environment variables
+  • click                - CLI framework
+  • pydub                - Audio utilities
+  • requests             - HTTP client
+
+
+ISOLATION FROM CRM
+------------------
+
+This is a SANDBOX project:
+  ✅ Self-contained in tools/spt/
+  ✅ No imports from main CRM code
+  ✅ No database connections
+  ✅ No shared dependencies
+  ✅ Independent virtual environment
+
+You can:
+  • Modify SPT without affecting CRM
+  • Delete SPT without breaking CRM
+  • Run SPT while CRM is running
+  • Copy SPT to another project
+
+
+NEXT STEPS
+----------
+
+1. Read QUICKSTART.md              (5 min)
+2. Copy .env.example to .env       (1 min)
+3. Add your GEMINI_API_KEY         (1 min)
+4. pip install -r requirements.txt (2 min)
+5. Run: python test_text_only.py   (30 sec)
+6. Try with audio file             (varies)
+
+
+SUPPORT
+-------
+
+For issues:
+  1. Enable verbose mode:  -v flag
+  2. Check logs for errors
+  3. Verify .env configuration
+  4. Review README.md troubleshooting section
+
+
+Created: 2026-02-07
+Version: 1.0.0
+Status:  Production-ready sandbox

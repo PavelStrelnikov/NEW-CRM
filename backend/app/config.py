@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     # Required in production (DEBUG=False). In dev mode a deterministic key is derived automatically.
     ENCRYPTION_KEY: Optional[str] = None
 
+    # OCR Label Scanning
+    # Google Gemini API key for device label OCR (optional — feature disabled if not set)
+    # Get one at https://aistudio.google.com/apikey
+    GEMINI_API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

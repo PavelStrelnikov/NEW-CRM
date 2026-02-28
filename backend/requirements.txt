@@ -27,6 +27,9 @@ pandas>=2.2.0
 openpyxl>=3.1.0
 cachetools>=5.3.0
 
+# OCR Label Scanning
+../ocr-lib
+
 # Testing
 requests>=2.31.0
 pytest>=9.0.0

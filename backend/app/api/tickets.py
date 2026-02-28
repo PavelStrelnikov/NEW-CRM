@@ -543,8 +543,8 @@ async def update_ticket(
                 asset.health_issues = []
                 db.commit()
 
-    # Re-load relationships after update
-    db.refresh(ticket)
+    # Re-load relationships after update (single query with eager loading)
+    db.expire(ticket)
     ticket = db.query(Ticket).options(
         joinedload(Ticket.status),
         joinedload(Ticket.assigned_to),
@@ -706,7 +706,13 @@ async def change_ticket_status(
     db.add(event)
 
     db.commit()
-    db.refresh(ticket)
+
+    # Reload with eager-loaded relationships
+    ticket = db.query(Ticket).options(
+        joinedload(Ticket.status),
+        joinedload(Ticket.assigned_to),
+        joinedload(Ticket.category_ref)
+    ).filter(Ticket.id == ticket.id).first()
 
     return ticket
 

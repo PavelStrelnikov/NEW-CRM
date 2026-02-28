@@ -767,3 +767,27 @@ export interface DeletionResponse {
   deleted_counts: Record<string, number>;
   message: string;
 }
+
+// OCR Label Scanning
+
+export interface OcrMappedField {
+  ocr_key: string;
+  value: string | null;
+  raw_value: string | null;
+  confidence: number;
+  alternatives: string[];
+  crm_property_key: string | null;
+  crm_basic_field: string | null;
+  label_en: string;
+  label_he: string;
+}
+
+export interface LabelScanResult {
+  fields: OcrMappedField[];
+  ocr_confidence: number;
+  provider_name: string;
+  processing_time_ms: number;
+  rotation_applied: number;
+  raw_text: string;
+  warnings: string[];
+}

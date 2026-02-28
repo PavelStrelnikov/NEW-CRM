@@ -1,4 +1,0 @@
-claude mcp add --transport http context7 https://mcp.context7.com/mcp \
-  --header "CONTEXT7_API_KEY:ctx7sk-e7a02655-42da-4e4a-afda-2d27e7ea1d5b
-
-  claude mcp add context7 -- npx -y @upstash/context7-mcp --api-key ctx7sk-e7a02655-42da-4e4a-afda-2d27e7ea1d5b

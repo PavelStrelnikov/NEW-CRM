@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCR Label Scanner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --danger: #f85149;
+    --danger-bg: rgba(248,81,73,0.1);
+    --success: #3fb950;
+    --warning: #d29922;
+    --text: #c9d1d9;
+    --text2: #8b949e;
+    --border: #30363d;
+    --radius: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 4px; }
+  .header .subtitle { color: var(--text2); font-size: 0.85rem; }
+
+  .sandbox-banner {
+    background: var(--danger-bg);
+    border: 1px solid rgba(248,81,73,0.4);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    text-align: center;
+    color: var(--danger);
+  }
+
+  /* Steps indicator */
+  .steps {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 24px;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text2);
+    padding: 6px 12px;
+    border-radius: 16px;
+    transition: all 0.2s;
+  }
+  .step .num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .step.active { color: var(--accent); }
+  .step.active .num { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .step.done { color: var(--success); }
+  .step.done .num { background: var(--success); color: var(--bg); border-color: var(--success); }
+  .step-line {
+    width: 40px; height: 1px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+  .step-line.done { background: var(--success); }
+
+  /* Phases */
+  .phase { display: none; }
+  .phase.active { display: block; }
+
+  /* Upload */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(88,166,255,0.05);
+  }
+  .drop-zone .icon { font-size: 2.5rem; margin-bottom: 8px; opacity: 0.7; }
+  .drop-zone p { color: var(--text2); margin-bottom: 16px; }
+  .drop-zone input[type="file"] { display: none; }
+
+  .upload-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn:hover { background: #30363d; border-color: var(--text2); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+  .btn-danger {
+    background: transparent;
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .btn-danger:hover { background: var(--danger-bg); }
+
+  .btn-large { padding: 12px 28px; font-size: 1rem; }
+
+  .btn-tool {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+  }
+
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  /* Editor */
+  .editor-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .cropper-wrap {
+    max-height: 65vh;
+    min-height: 250px;
+  }
+  .cropper-wrap img {
+    display: block;
+    max-width: 100%;
+  }
+
+  /* Cropper.js overrides for dark theme */
+  .cropper-view-box { outline-color: var(--accent); }
+  .cropper-line { background-color: var(--accent); }
+  .cropper-point { background-color: var(--accent); width: 8px; height: 8px; }
+  .cropper-modal { background-color: rgba(0,0,0,0.6); }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .toolbar-sep {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+  .toolbar label {
+    color: var(--text2);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .toolbar input[type="range"] {
+    width: 120px;
+    accent-color: var(--accent);
+  }
+  .fine-value {
+    font-size: 0.8rem;
+    color: var(--accent);
+    min-width: 32px;
+    text-align: center;
+  }
+
+  .editor-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .editor-actions .right { display: flex; gap: 10px; }
+
+  /* Preview */
+  .preview-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .preview-label {
+    font-size: 0.8rem;
+    color: var(--text2);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .preview-card img {
+    max-width: 100%;
+    max-height: 50vh;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .preview-info {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--text2);
+  }
+
+  .preview-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  /* Loading */
+  .loading-overlay {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    color: var(--text2);
+    font-size: 0.9rem;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Results */
+  .results-container { margin-top: 20px; }
+
+  .credential-banner {
+    background: var(--danger-bg);
+    border: 1px solid rgba(248,81,73,0.4);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--danger);
+  }
+
+  .section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .fields-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  .fields-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .fields-table tr:last-child td { border-bottom: none; }
+  .fields-table .label-cell {
+    color: var(--text2);
+    font-size: 0.85rem;
+    width: 130px;
+    white-space: nowrap;
+  }
+  .fields-table .value-cell {
+    font-family: 'Consolas', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    word-break: break-all;
+  }
+  .fields-table .not-found { color: var(--text2); font-style: italic; }
+
+  .conf-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .conf-high { background: rgba(63,185,80,0.15); color: var(--success); }
+  .conf-med  { background: rgba(210,153,34,0.15); color: var(--warning); }
+  .conf-low  { background: rgba(248,81,73,0.15); color: var(--danger); }
+
+  .alternatives { font-size: 0.8rem; color: var(--text2); margin-top: 4px; }
+
+  .meta-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .meta-row span {
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--text2);
+  }
+
+  /* Collapsible details */
+  details {
+    margin-bottom: 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  details summary {
+    padding: 10px 14px;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 0.875rem;
+    user-select: none;
+    list-style: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before {
+    content: '\25B6';
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  details summary:hover { background: var(--surface2); }
+  details .detail-body {
+    padding: 12px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.8rem;
+    color: var(--text2);
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Fira Code', monospace;
+  }
+
+  /* Error */
+  .error-banner {
+    background: var(--danger-bg);
+    border: 1px solid rgba(248,81,73,0.4);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+    color: var(--danger);
+    display: none;
+  }
+  .error-banner.visible { display: block; }
+
+  /* Warning row in fields table */
+  .warning-row td {
+    color: var(--warning) !important;
+    font-size: 0.85rem;
+    font-style: normal !important;
+    font-family: inherit !important;
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 10px; }
+    .header h1 { font-size: 1.2rem; }
+    .drop-zone { padding: 32px 16px; }
+    .toolbar { gap: 6px; }
+    .toolbar input[type="range"] { width: 80px; }
+    .fields-table .label-cell { width: 100px; font-size: 0.8rem; }
+    .step span:not(.num) { display: none; }
+    .editor-actions { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header class="header">
+    <h1>OCR Label Scanner</h1>
+    <p class="subtitle">Spike / Sandbox</p>
+  </header>
+
+  <div class="sandbox-banner">
+    &#9888; SANDBOX TOOL &mdash; Credentials are extracted for testing only. Do not use in production.
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="step-1"><span class="num">1</span> <span>Upload</span></div>
+    <div class="step-line" id="line-1-2"></div>
+    <div class="step" id="step-2"><span class="num">2</span> <span>Edit</span></div>
+    <div class="step-line" id="line-2-3"></div>
+    <div class="step" id="step-3"><span class="num">3</span> <span>OCR</span></div>
+  </div>
+
+  <!-- Error banner -->
+  <div class="error-banner" id="errorBanner"></div>
+
+  <!-- ======== Phase 1: Upload ======== -->
+  <div id="phase-upload" class="phase active">
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">&#128247;</div>
+      <p>Drop a device label image here, or select a file</p>
+      <div class="upload-btns">
+        <label class="btn btn-primary">
+          Choose File
+          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp">
+        </label>
+        <label class="btn">
+          &#128248; Camera
+          <input type="file" id="cameraInput" accept="image/*" capture="environment">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== Phase 2: Editor ======== -->
+  <div id="phase-editor" class="phase">
+    <div class="editor-container">
+      <div class="cropper-wrap" id="cropperWrap">
+        <img id="editorImage" src="" alt="Device label">
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-group">
+        <label>Rotate:</label>
+        <button class="btn btn-tool" onclick="doRotate(-90)" title="Rotate left 90 degrees">&#8634; -90&deg;</button>
+        <button class="btn btn-tool" onclick="doRotate(90)" title="Rotate right 90 degrees">&#8635; +90&deg;</button>
+      </div>
+
+      <div class="toolbar-sep"></div>
+
+      <div class="toolbar-group">
+        <label>Fine:</label>
+        <input type="range" id="fineSlider" min="-10" max="10" step="0.5" value="0"
+               oninput="updateFine(this.value)">
+        <span class="fine-value" id="fineValue">0&deg;</span>
+      </div>
+
+      <div class="toolbar-sep"></div>
+
+      <div class="toolbar-group">
+        <button class="btn btn-tool" onclick="doReset()">Reset</button>
+      </div>
+    </div>
+
+    <div class="editor-actions">
+      <button class="btn" onclick="newImage()">&#8592; Different Image</button>
+      <div class="right">
+        <button class="btn btn-primary btn-large" onclick="applyChanges()">
+          Apply Crop &amp; Rotation
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== Phase 3: Preview + OCR + Results ======== -->
+  <div id="phase-preview" class="phase">
+    <div class="preview-card">
+      <p class="preview-label">Image to be sent for OCR</p>
+      <img id="previewImage" src="" alt="Cropped preview">
+      <p class="preview-info" id="previewInfo"></p>
+    </div>
+
+    <div class="preview-actions">
+      <button class="btn" onclick="backToEditor()">&#8592; Back to Editor</button>
+      <button class="btn btn-primary btn-large" id="btnRunOcr" onclick="runOCR()">
+        Run OCR
+      </button>
+      <button class="btn" onclick="newImage()">New Image</button>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <span>Running OCR via Gemini&hellip;</span>
+    </div>
+
+    <!-- Results -->
+    <div class="results-container" id="resultsContainer" style="display:none">
+      <div class="credential-banner" id="credBanner" style="display:none">
+        &#9888; Credentials detected in label &mdash; handle with care
+      </div>
+
+      <div class="section-title">Extracted Fields</div>
+      <table class="fields-table"><tbody id="fieldsBody"></tbody></table>
+
+      <div class="meta-row" id="metaRow"></div>
+
+      <details>
+        <summary>Raw OCR Text</summary>
+        <div class="detail-body"><pre id="rawText"></pre></div>
+      </details>
+
+      <details>
+        <summary>Normalized Text</summary>
+        <div class="detail-body"><pre id="normText"></pre></div>
+      </details>
+
+      <details>
+        <summary>OCR Attempts</summary>
+        <div class="detail-body"><pre id="attemptsText"></pre></div>
+      </details>
+
+      <details>
+        <summary>Full JSON Response</summary>
+        <div class="detail-body"><pre id="jsonText"></pre></div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script>
+// =================================================================
+// State
+// =================================================================
+let cropper = null;
+let baseRotation = 0;   // accumulated from -90/+90 buttons
+let fineRotation = 0;   // from fine slider
+let finalBlob = null;    // PNG blob of cropped/rotated image
+let originalFile = null; // the uploaded file
+
+const FIELD_LABELS = {
+  mac_address: 'MAC Address',
+  serial_number: 'Serial Number',
+  device_username: 'Username',
+  device_password: 'Password',
+  wifi_ssid: 'WiFi SSID',
+  wifi_password: 'WiFi Password',
+  default_ip: 'Default IP',
+  gateway: 'Gateway',
+};
+
+// =================================================================
+// Phase Management
+// =================================================================
+function showPhase(name) {
+  document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+  document.getElementById('phase-' + name).classList.add('active');
+  updateSteps(name);
+
+  // Resize cropper when returning to editor
+  if (name === 'editor' && cropper) {
+    requestAnimationFrame(() => cropper.resize());
+  }
+}
+
+function updateSteps(phase) {
+  const steps = ['upload', 'editor', 'preview'];
+  const idx = steps.indexOf(phase);
+
+  for (let i = 0; i < steps.length; i++) {
+    const stepEl = document.getElementById('step-' + (i + 1));
+    const lineEl = i < steps.length - 1 ? document.getElementById('line-' + (i + 1) + '-' + (i + 2)) : null;
+
+    stepEl.className = 'step';
+    if (i < idx) {
+      stepEl.classList.add('done');
+      if (lineEl) lineEl.classList.add('done');
+    } else if (i === idx) {
+      stepEl.classList.add('active');
+      if (lineEl) lineEl.classList.remove('done');
+    } else {
+      if (lineEl) lineEl.classList.remove('done');
+    }
+  }
+}
+
+// =================================================================
+// Upload
+// =================================================================
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const cameraInput = document.getElementById('cameraInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) handleFileUpload(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) handleFileUpload(fileInput.files[0]);
+});
+cameraInput.addEventListener('change', () => {
+  if (cameraInput.files.length > 0) handleFileUpload(cameraInput.files[0]);
+});
+
+function handleFileUpload(file) {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowed.includes(file.type)) {
+    showError('Unsupported file type. Use JPEG, PNG, or WebP.');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showError('File too large. Maximum 10 MB.');
+    return;
+  }
+
+  hideError();
+  originalFile = file;
+  finalBlob = null;
+
+  // Reset rotation state
+  baseRotation = 0;
+  fineRotation = 0;
+  document.getElementById('fineSlider').value = 0;
+  document.getElementById('fineValue').textContent = '0\u00b0';
+
+  // Load image into cropper
+  const url = URL.createObjectURL(file);
+  const editorImg = document.getElementById('editorImage');
+
+  // Destroy previous cropper
+  if (cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
+
+  editorImg.onload = () => {
+    initCropper(editorImg);
+    showPhase('editor');
+  };
+  editorImg.src = url;
+}
+
+// =================================================================
+// Cropper.js
+// =================================================================
+function initCropper(imageEl) {
+  cropper = new Cropper(imageEl, {
+    viewMode: 1,
+    dragMode: 'crop',
+    autoCrop: true,
+    autoCropArea: 1,
+    responsive: true,
+    restore: true,
+    guides: true,
+    highlight: true,
+    cropBoxMovable: true,
+    cropBoxResizable: true,
+    toggleDragModeOnDblclick: true,
+    movable: true,
+    zoomable: true,
+    zoomOnWheel: true,
+    rotatable: true,
+    scalable: false,
+    checkOrientation: true,
+    minCropBoxWidth: 30,
+    minCropBoxHeight: 30,
+    background: true,
+  });
+}
+
+// =================================================================
+// Editor: Rotate & Fine
+// =================================================================
+function doRotate(degrees) {
+  if (!cropper) return;
+  baseRotation += degrees;
+  cropper.rotateTo(baseRotation + fineRotation);
+}
+
+function updateFine(value) {
+  fineRotation = parseFloat(value);
+  document.getElementById('fineValue').textContent = fineRotation.toFixed(1) + '\u00b0';
+  if (cropper) cropper.rotateTo(baseRotation + fineRotation);
+}
+
+function doReset() {
+  baseRotation = 0;
+  fineRotation = 0;
+  document.getElementById('fineSlider').value = 0;
+  document.getElementById('fineValue').textContent = '0\u00b0';
+  if (cropper) {
+    cropper.reset();
+    cropper.rotateTo(0);
+  }
+}
+
+// =================================================================
+// Apply Crop & Rotation
+// =================================================================
+function applyChanges() {
+  if (!cropper) return;
+
+  const canvas = cropper.getCroppedCanvas({
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+  });
+
+  if (!canvas) {
+    showError('Failed to create cropped image. Try again.');
+    return;
+  }
+
+  if (canvas.width < 50 || canvas.height < 50) {
+    showError('Selected area is too small (minimum 50x50 pixels). Select a larger region.');
+    return;
+  }
+
+  canvas.toBlob(blob => {
+    if (!blob) {
+      showError('Failed to export image.');
+      return;
+    }
+
+    finalBlob = blob;
+
+    const previewImg = document.getElementById('previewImage');
+    previewImg.src = URL.createObjectURL(blob);
+
+    const sizeKB = Math.round(blob.size / 1024);
+    document.getElementById('previewInfo').textContent =
+      canvas.width + ' \u00d7 ' + canvas.height + ' px \u00b7 ' + sizeKB + ' KB PNG';
+
+    document.getElementById('resultsContainer').style.display = 'none';
+    document.getElementById('btnRunOcr').disabled = false;
+
+    showPhase('preview');
+  }, 'image/png');
+}
+
+// =================================================================
+// Back / New Image
+// =================================================================
+function backToEditor() {
+  showPhase('editor');
+}
+
+function newImage() {
+  if (cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
+
+  baseRotation = 0;
+  fineRotation = 0;
+  finalBlob = null;
+  originalFile = null;
+  document.getElementById('fineSlider').value = 0;
+  document.getElementById('fineValue').textContent = '0\u00b0';
+  document.getElementById('resultsContainer').style.display = 'none';
+  document.getElementById('editorImage').src = '';
+  document.getElementById('previewImage').src = '';
+
+  fileInput.value = '';
+  cameraInput.value = '';
+
+  hideError();
+  showPhase('upload');
+}
+
+// =================================================================
+// Run OCR
+// =================================================================
+async function runOCR() {
+  if (!finalBlob) {
+    showError('No image prepared. Go back to editor and apply crop/rotation first.');
+    return;
+  }
+
+  hideError();
+  const btnRunOcr = document.getElementById('btnRunOcr');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  const resultsContainer = document.getElementById('resultsContainer');
+
+  btnRunOcr.disabled = true;
+  loadingOverlay.classList.add('active');
+  resultsContainer.style.display = 'none';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', finalBlob, 'cropped.png');
+    formData.append('pre_cropped', '1');
+
+    const resp = await fetch('/scan', { method: 'POST', body: formData });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      showError(data.detail || 'Server error (' + resp.status + ')');
+      return;
+    }
+
+    renderResults(data);
+    resultsContainer.style.display = 'block';
+  } catch (err) {
+    showError('Request failed: ' + err.message);
+  } finally {
+    btnRunOcr.disabled = false;
+    loadingOverlay.classList.remove('active');
+  }
+}
+
+// =================================================================
+// Render Results
+// =================================================================
+function renderResults(data) {
+  // Credential warning
+  document.getElementById('credBanner').style.display =
+    data.contains_credentials ? 'flex' : 'none';
+
+  // Fields table
+  const tbody = document.getElementById('fieldsBody');
+  tbody.innerHTML = '';
+  const fieldOrder = Object.keys(FIELD_LABELS);
+
+  for (const key of fieldOrder) {
+    const f = data.fields[key];
+    const tr = document.createElement('tr');
+
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'label-cell';
+    tdLabel.textContent = FIELD_LABELS[key];
+    tr.appendChild(tdLabel);
+
+    const tdVal = document.createElement('td');
+
+    if (!f) {
+      tdVal.className = 'value-cell not-found';
+      tdVal.textContent = '\u2014 not detected';
+    } else {
+      tdVal.className = 'value-cell';
+
+      const displayVal = f.raw_value || f.value;
+      const valSpan = document.createElement('span');
+      valSpan.textContent = displayVal;
+      tdVal.appendChild(valSpan);
+
+      const badge = document.createElement('span');
+      badge.className = 'conf-badge ' + confClass(f.confidence);
+      badge.textContent = Math.round(f.confidence * 100) + '%';
+      tdVal.appendChild(badge);
+
+      if (f.alternatives && f.alternatives.length > 0) {
+        const altDiv = document.createElement('div');
+        altDiv.className = 'alternatives';
+        altDiv.textContent = 'Also found: ' + f.alternatives.join(', ');
+        tdVal.appendChild(altDiv);
+      }
+    }
+
+    tr.appendChild(tdVal);
+    tbody.appendChild(tr);
+  }
+
+  // Warnings (non-credential)
+  const otherWarnings = (data.warnings || []).filter(w => !w.startsWith('Credentials detected'));
+  for (const w of otherWarnings) {
+    const tr = document.createElement('tr');
+    tr.className = 'warning-row';
+    const td = document.createElement('td');
+    td.colSpan = 2;
+    td.textContent = '\u26a0 ' + w;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  // Metadata
+  const metaRow = document.getElementById('metaRow');
+  metaRow.innerHTML = '';
+  const metas = [
+    'Time: ' + data.processing_time_ms + 'ms',
+    'Provider: ' + data.ocr_provider,
+    'Confidence: ' + Math.round(data.ocr_confidence * 100) + '%',
+    'Image: ' + data.image_dimensions[0] + '\u00d7' + data.image_dimensions[1],
+  ];
+  for (const m of metas) {
+    const span = document.createElement('span');
+    span.textContent = m;
+    metaRow.appendChild(span);
+  }
+
+  // Raw & normalized text
+  document.getElementById('rawText').textContent = data.raw_text || '';
+  document.getElementById('normText').textContent = data.normalized_text || '';
+  document.getElementById('jsonText').textContent = JSON.stringify(data, null, 2);
+
+  // Attempts
+  const attemptsEl = document.getElementById('attemptsText');
+  if (data.rotation_attempts && data.rotation_attempts.length > 0) {
+    const lines = data.rotation_attempts.map(a => {
+      const best = (a.angle === data.rotation_applied) ? '  << BEST' : '';
+      return String(a.angle).padStart(3) + '\u00b0' +
+        '  conf=' + (a.confidence * 100).toFixed(1).padStart(5) + '%' +
+        '  len=' + String(a.text_length).padStart(4) +
+        (a.fields_found != null ? '  fields=' + a.fields_found : '') +
+        (a.score != null ? '  score=' + a.score : '') +
+        best;
+    });
+    attemptsEl.textContent = lines.join('\n');
+  } else {
+    attemptsEl.textContent = '(no attempt data)';
+  }
+}
+
+function confClass(c) {
+  return c >= 0.7 ? 'conf-high' : c >= 0.3 ? 'conf-med' : 'conf-low';
+}
+
+// =================================================================
+// Error handling
+// =================================================================
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function hideError() {
+  document.getElementById('errorBanner').classList.remove('visible');
+}
+
+// =================================================================
+// Init
+// =================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof Cropper === 'undefined') {
+    showError('Failed to load Cropper.js library. Check your internet connection and reload.');
+    document.getElementById('dropZone').style.pointerEvents = 'none';
+    document.getElementById('dropZone').style.opacity = '0.5';
+    return;
+  }
+});
+</script>
+</body>
+</html>

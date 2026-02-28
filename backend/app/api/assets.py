@@ -3,8 +3,8 @@ Assets API endpoints.
 """
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import or_
 from datetime import datetime, date
 
@@ -41,8 +41,35 @@ from app.auth.dependencies import (
     require_admin_or_technician
 )
 from app.utils.crypto import encrypt_secret, decrypt_secret
+from app.schemas.asset_ocr import LabelScanResponse
+from app.services.asset_ocr_service import (
+    scan_device_label, OCR_SUPPORTED_TYPES, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE,
+)
 
 router = APIRouter()
+
+# Keys to exclude from asset.__dict__ when building response dicts
+# (SQLAlchemy internal state + relationship objects loaded via joinedload/selectinload)
+_ASSET_RELATIONSHIP_KEYS = {
+    '_sa_instance_state', 'asset_type', 'client', 'site', 'location',
+    'property_values', 'events', 'nvr_disks', 'nvr_channels', 'tickets',
+}
+
+def _asset_to_dict(asset: Asset) -> dict:
+    """Convert SQLAlchemy Asset to dict excluding relationships and internal state."""
+    return {k: v for k, v in asset.__dict__.items() if k not in _ASSET_RELATIONSHIP_KEYS}
+
+# Asset types that support NVR-specific features (disks, channels, probe)
+NVR_DVR_TYPES = {"NVR", "DVR"}
+
+
+def require_nvr_dvr_asset(asset: Asset) -> None:
+    """Raise 400 if asset is not NVR or DVR type."""
+    if not asset.asset_type or asset.asset_type.code not in NVR_DVR_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This operation is only available for NVR/DVR assets"
+        )
 
 
 def get_actor_info(current_user: CurrentUser) -> tuple[str, Optional[UUID], str]:
@@ -137,12 +164,18 @@ def process_asset_properties(
     if not properties:
         return
 
-    # Get all property definitions for this asset type
+    # Get all property definitions for this asset type (1 query)
     prop_defs = db.query(AssetPropertyDefinition).filter(
         AssetPropertyDefinition.asset_type_id == asset_type_id
     ).all()
 
     prop_def_map = {pd.key: pd for pd in prop_defs}
+
+    # Batch-load ALL existing property values for this asset (1 query instead of N)
+    existing_values = db.query(AssetPropertyValue).filter(
+        AssetPropertyValue.asset_id == asset_id
+    ).all()
+    existing_map = {pv.property_definition_id: pv for pv in existing_values}
 
     actor_type, actor_id, actor_display = get_actor_info(current_user)
 
@@ -153,11 +186,8 @@ def process_asset_properties(
 
         prop_def = prop_def_map[key]
 
-        # Find or create property value
-        prop_value = db.query(AssetPropertyValue).filter(
-            AssetPropertyValue.asset_id == asset_id,
-            AssetPropertyValue.property_definition_id == prop_def.id
-        ).first()
+        # Find existing or create new property value (no extra query)
+        prop_value = existing_map.get(prop_def.id)
 
         # Get old value for audit log (before updating)
         old_value = None
@@ -298,6 +328,63 @@ async def list_property_definitions(
     return prop_defs
 
 
+# ========== OCR Label Scanning ==========
+
+@router.post("/assets/scan-label", response_model=LabelScanResponse)
+async def scan_label_endpoint(
+    file: UploadFile = File(...),
+    asset_type_code: str = Form(...),
+    current_user: CurrentUser = Depends(require_admin_or_technician),
+):
+    """
+    Scan a device label photo and extract fields (MAC, serial, credentials, WiFi).
+
+    Returns extracted fields mapped to CRM properties for the given asset type.
+    No data is saved — results are for human review only.
+
+    **Supported types:** ROUTER, SWITCH, ACCESS_POINT
+    """
+    code = asset_type_code.strip().upper()
+
+    if code not in OCR_SUPPORTED_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Label scanning is only available for: {', '.join(sorted(OCR_SUPPORTED_TYPES))}"
+        )
+
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File must be an image (JPEG, PNG, or WebP). Got: {content_type}"
+        )
+
+    image_bytes = await file.read()
+
+    if len(image_bytes) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty file"
+        )
+
+    if len(image_bytes) > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Image too large. Maximum size: {MAX_IMAGE_SIZE // (1024 * 1024)}MB"
+        )
+
+    try:
+        result = await scan_device_label(image_bytes, code)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"OCR processing failed: {e}"
+        )
+
+
 # ========== Asset CRUD Endpoints ==========
 
 @router.get("/assets", response_model=AssetListResponse)
@@ -345,14 +432,24 @@ async def list_assets(
     # Get total count
     total = query.count()
 
-    # Apply pagination
+    # Apply pagination with eager loading to avoid N+1 queries
     offset = (page - 1) * page_size
-    assets = query.order_by(Asset.created_at.desc()).offset(offset).limit(page_size).all()
+    assets = (
+        query
+        .options(
+            joinedload(Asset.asset_type),
+            selectinload(Asset.property_values).joinedload(AssetPropertyValue.property_definition),
+        )
+        .order_by(Asset.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
 
     # Build response with asset_type_code and key network properties
     asset_responses = []
     for asset in assets:
-        # Get wan_public_ip and lan_ip_address from properties
+        # Get wan_public_ip and lan_ip_address from pre-loaded properties
         wan_ip = None
         lan_ip = None
         for prop_value in asset.property_values:
@@ -364,7 +461,7 @@ async def list_assets(
                     lan_ip = prop_value.value_string
 
         asset_dict = {
-            **asset.__dict__,
+            **_asset_to_dict(asset),
             'asset_type_code': asset.asset_type.code if asset.asset_type else None,
             'wan_public_ip': wan_ip,
             'lan_ip_address': lan_ip
@@ -465,13 +562,23 @@ async def create_asset(
     db.add(event)
 
     db.commit()
-    db.refresh(asset)
+
+    # Reload asset with all relationships in a single query
+    asset = (
+        db.query(Asset)
+        .options(
+            joinedload(Asset.asset_type),
+            selectinload(Asset.property_values).joinedload(AssetPropertyValue.property_definition),
+        )
+        .filter(Asset.id == asset.id)
+        .first()
+    )
 
     # Build detailed response (pass current_user for secret visibility)
     properties = get_asset_properties(asset, db, current_user)
 
     return AssetDetailResponse(
-        **asset.__dict__,
+        **_asset_to_dict(asset),
         asset_type_code=asset.asset_type.code if asset.asset_type else None,
         asset_type=asset.asset_type,
         properties=properties
@@ -491,7 +598,15 @@ async def get_asset(
     - Internal users: Can access any asset
     - Client users: Can only access assets for their own client
     """
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    asset = (
+        db.query(Asset)
+        .options(
+            joinedload(Asset.asset_type),
+            selectinload(Asset.property_values).joinedload(AssetPropertyValue.property_definition),
+        )
+        .filter(Asset.id == asset_id)
+        .first()
+    )
 
     if not asset:
         raise HTTPException(
@@ -510,9 +625,14 @@ async def get_asset(
     # Build detailed response (pass current_user for secret visibility)
     properties = get_asset_properties(asset, db, current_user)
 
-    # Get tickets linked to this asset (via asset_id FK)
-    tickets_query = db.query(Ticket).filter(Ticket.asset_id == asset_id).order_by(Ticket.created_at.desc())
-    tickets = tickets_query.all()
+    # Get tickets linked to this asset with status eager-loaded
+    tickets = (
+        db.query(Ticket)
+        .options(joinedload(Ticket.status))
+        .filter(Ticket.asset_id == asset_id)
+        .order_by(Ticket.created_at.desc())
+        .all()
+    )
 
     # Build ticket summaries with closed state info
     ticket_summaries = []
@@ -533,7 +653,7 @@ async def get_asset(
         ))
 
     return AssetDetailResponse(
-        **asset.__dict__,
+        **_asset_to_dict(asset),
         asset_type_code=asset.asset_type.code if asset.asset_type else None,
         asset_type=asset.asset_type,
         properties=properties,
@@ -731,13 +851,23 @@ async def update_asset(
         )
 
     db.commit()
-    db.refresh(asset)
+
+    # Reload asset with all relationships in a single query
+    asset = (
+        db.query(Asset)
+        .options(
+            joinedload(Asset.asset_type),
+            selectinload(Asset.property_values).joinedload(AssetPropertyValue.property_definition),
+        )
+        .filter(Asset.id == asset_id)
+        .first()
+    )
 
     # Build detailed response (pass current_user for secret visibility)
     properties = get_asset_properties(asset, db, current_user)
 
     return AssetDetailResponse(
-        **asset.__dict__,
+        **_asset_to_dict(asset),
         asset_type_code=asset.asset_type.code if asset.asset_type else None,
         asset_type=asset.asset_type,
         properties=properties
@@ -845,6 +975,8 @@ async def list_nvr_disks(
             detail="Asset not found"
         )
 
+    require_nvr_dvr_asset(asset)
+
     # Apply RBAC check
     if current_user.user_type == "client":
         if str(current_user.client_id) != str(asset.client_id):
@@ -883,6 +1015,8 @@ async def create_nvr_disk(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found"
         )
+
+    require_nvr_dvr_asset(asset)
 
     # Create disk
     disk = NVRDisk(
@@ -1045,6 +1179,8 @@ async def list_nvr_channels(
             detail="Asset not found"
         )
 
+    require_nvr_dvr_asset(asset)
+
     # Load channel customization from database
     db_channels = db.query(NVRChannel).filter(
         NVRChannel.asset_id == asset_id
@@ -1128,6 +1264,8 @@ async def bulk_update_channels(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found"
         )
+
+    require_nvr_dvr_asset(asset)
 
     actor_type, actor_id, actor_display = get_actor_info(current_user)
 

@@ -169,6 +169,7 @@ class AssetPropertyValue(Base):
 
     __table_args__ = (
         UniqueConstraint("asset_id", "property_definition_id", name="uq_asset_property_value_asset_definition"),
+        Index("ix_asset_property_values_asset_def", "asset_id", "property_definition_id"),
     )
 
 

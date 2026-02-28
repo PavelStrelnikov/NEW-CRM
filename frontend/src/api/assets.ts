@@ -14,6 +14,7 @@ import {
   NVRDiskUpdate,
   ChannelWithStatus,
   NVRChannelBulkUpdateRequest,
+  LabelScanResult,
 } from '@/types';
 
 export const assetsApi = {
@@ -107,11 +108,25 @@ export const assetsApi = {
   bulkUpdateChannels: async (assetId: string, data: NVRChannelBulkUpdateRequest): Promise<void> => {
     await apiClient.post(`/assets/${assetId}/channels/bulk-update`, data);
   },
-};
 
-// Aliases for compatibility with portal API interface
-assetsApi.list = assetsApi.listAssets;
-assetsApi.get = assetsApi.getAsset;
-assetsApi.create = assetsApi.createAsset;
-assetsApi.update = assetsApi.updateAsset;
-assetsApi.delete = assetsApi.deleteAsset;
+  // OCR Label Scanning
+  scanLabel: async (file: File, assetTypeCode: string): Promise<LabelScanResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('asset_type_code', assetTypeCode);
+
+    const response = await apiClient.post<LabelScanResult>(
+      '/assets/scan-label',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }
+    );
+    return response.data;
+  },
+
+  // Aliases for compatibility with portal API interface
+  get list() { return this.listAssets; },
+  get get() { return this.getAsset; },
+  get create() { return this.createAsset; },
+  get update() { return this.updateAsset; },
+  get delete() { return this.deleteAsset; },
+};

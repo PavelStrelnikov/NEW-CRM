@@ -16,11 +16,15 @@ import {
   FormControl,
   FormLabel,
   Typography,
+  IconButton,
+  InputAdornment,
 } from '@mui/material';
+import MicIcon from '@mui/icons-material/Mic';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/contexts/ToastContext';
 import { ticketsApi } from '@/api/tickets';
+import { SpeechToTextDialog } from './SpeechToTextDialog';
 
 interface WorkLogFormProps {
   open: boolean;
@@ -92,6 +96,17 @@ export const WorkLogForm: React.FC<WorkLogFormProps> = ({
   };
 
   const [formData, setFormData] = useState<WorkLogFormData>(getInitialFormData());
+  const [sttDialogOpen, setSttDialogOpen] = useState(false);
+
+  const isSttSupported = typeof window !== 'undefined' && 'MediaRecorder' in window;
+
+  const handleSttInsert = (text: string) => {
+    setFormData(prev => ({
+      ...prev,
+      description: prev.description ? prev.description + '\n' + text : text,
+    }));
+    setSttDialogOpen(false);
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -180,6 +195,20 @@ export const WorkLogForm: React.FC<WorkLogFormProps> = ({
               multiline
               rows={3}
               placeholder={t('tickets.description') + '...'}
+              InputProps={isSttSupported ? {
+                endAdornment: (
+                  <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                    <IconButton
+                      onClick={() => setSttDialogOpen(true)}
+                      color="primary"
+                      title={t('tickets.stt.recordVoice')}
+                      size="small"
+                    >
+                      <MicIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              } : undefined}
             />
 
             {/* Time Tracking Mode Selector */}
@@ -279,6 +308,12 @@ export const WorkLogForm: React.FC<WorkLogFormProps> = ({
           </Button>
         </DialogActions>
       </form>
+
+      <SpeechToTextDialog
+        open={sttDialogOpen}
+        onClose={() => setSttDialogOpen(false)}
+        onInsert={handleSttInsert}
+      />
     </Dialog>
   );
 };

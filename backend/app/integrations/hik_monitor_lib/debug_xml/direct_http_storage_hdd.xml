@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<hddList version="1.0" xmlns="http://www.std-cgi.com/ver20/XMLSchema">
+<hdd version="1.0" xmlns="http://www.std-cgi.com/ver20/XMLSchema">
+<id>2</id>
+<hddName>hddb</hddName>
+<hddPath></hddPath>
+<hddType>SATA</hddType>
+<status>ok</status>
+<capacity>5723166</capacity>
+<freeSpace>1949696</freeSpace>
+<property>RW</property>
+</hdd>
+</hddList>

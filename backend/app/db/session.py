@@ -10,8 +10,11 @@ from app.config import settings
 # Create SQLAlchemy engine
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_pre_ping=True,  # Verify connections before using them
-    echo=settings.DEBUG   # Log SQL queries in debug mode
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=300,
+    echo=False,  # SQL logging disabled — use LOG_LEVEL=DEBUG for app-level logging
 )
 
 # Create sessionmaker

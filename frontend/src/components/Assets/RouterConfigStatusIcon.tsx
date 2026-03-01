@@ -42,9 +42,9 @@ export const RouterConfigStatusIcon: React.FC<RouterConfigStatusIconProps> = ({
   const color = getRouterConfigColor(configResult.status);
 
   const bgColor = {
-    configured: 'rgba(46, 125, 50, 0.08)',
-    incomplete: 'rgba(237, 108, 2, 0.08)',
-    no_data: 'rgba(117, 117, 117, 0.08)',
+    configured: 'rgba(0, 210, 180, 0.08)',
+    incomplete: 'rgba(255, 179, 71, 0.08)',
+    no_data: 'rgba(80, 90, 112, 0.08)',
   }[configResult.status];
 
   const Icon = {

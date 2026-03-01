@@ -85,33 +85,33 @@ export function getDiskStatusColor(status: string | undefined): {
     statusLower === 'smartfailed'
   ) {
     return {
-      main: '#d32f2f',  // MUI error.main
-      background: 'rgba(211, 47, 47, 0.1)',
-      text: '#d32f2f',
+      main: '#ff4d6a',
+      background: 'rgba(255, 77, 106, 0.1)',
+      text: '#ff4d6a',
     };
   }
 
-  // Warning statuses - Orange
+  // Warning statuses - Amber
   if (
     statusLower === 'warning' ||
     statusLower === 'degraded' ||
     statusLower === 'uninitialized'
   ) {
     return {
-      main: '#ed6c02',  // MUI warning.main
-      background: 'rgba(237, 108, 2, 0.1)',
-      text: '#ed6c02',
+      main: '#ffb347',
+      background: 'rgba(255, 179, 71, 0.1)',
+      text: '#ffb347',
     };
   }
 
-  // OK statuses - Green
+  // OK statuses - Teal
   if (
     statusLower === 'ok' ||
     statusLower === 'healthy' ||
     statusLower === 'normal'
   ) {
     return {
-      main: '#2e7d32',  // MUI success.main
+      main: '#00d2b4',
       background: 'transparent',
       text: 'inherit',
     };
@@ -119,9 +119,9 @@ export function getDiskStatusColor(status: string | undefined): {
 
   // Unknown/Other statuses - Grey
   return {
-    main: '#757575',  // MUI grey
-    background: 'rgba(117, 117, 117, 0.1)',
-    text: '#757575',
+    main: '#505a70',
+    background: 'rgba(80, 90, 112, 0.1)',
+    text: '#505a70',
   };
 }
 

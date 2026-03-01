@@ -74,8 +74,8 @@ export function getRouterConfigStatus(
 
 export function getRouterConfigColor(status: RouterConfigStatus): string {
   switch (status) {
-    case 'configured': return '#2e7d32';
-    case 'incomplete': return '#ed6c02';
-    case 'no_data': return '#757575';
+    case 'configured': return '#00d2b4';
+    case 'incomplete': return '#ffb347';
+    case 'no_data': return '#505a70';
   }
 }

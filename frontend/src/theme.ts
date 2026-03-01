@@ -1,6 +1,6 @@
 /**
  * MUI Theme Configuration
- * Modern CRM 2026 - Clean, professional, RTL-friendly
+ * CRM Surveillance Command Center — dark-first, teal accent
  */
 
 import { createTheme, Theme } from '@mui/material/styles';
@@ -9,7 +9,7 @@ import { createComponentOverrides } from './theme/overrides';
 
 export const createAppTheme = (
   direction: 'ltr' | 'rtl',
-  mode: 'light' | 'dark' = 'light'
+  mode: 'light' | 'dark' = 'dark'
 ): Theme => {
   const isDark = mode === 'dark';
   const themeColors = isDark ? tokens.colorsDark : tokens.colors;
@@ -19,35 +19,35 @@ export const createAppTheme = (
     palette: {
       mode,
       primary: {
-        main: isDark ? '#4C8DFF' : tokens.colors.primary[500],
-        light: isDark ? '#8AB4FF' : tokens.colors.primary[300],
-        dark: isDark ? '#3B7CFF' : tokens.colors.primary[700],
-        contrastText: '#FFFFFF',
+        main: isDark ? tokens.accent.teal : tokens.colors.primary[500],
+        light: isDark ? '#33dcc6' : tokens.colors.primary[300],
+        dark: isDark ? '#00b89c' : tokens.colors.primary[700],
+        contrastText: isDark ? '#0a0e17' : '#FFFFFF',
       },
       secondary: {
-        main: tokens.colors.neutral[700],
-        light: tokens.colors.neutral[500],
-        dark: tokens.colors.neutral[900],
+        main: isDark ? tokens.accent.blue : tokens.colors.neutral[700],
+        light: isDark ? '#8fb8ff' : tokens.colors.neutral[500],
+        dark: isDark ? '#5088e6' : tokens.colors.neutral[900],
         contrastText: '#FFFFFF',
       },
       success: {
         main: tokens.colors.success.main,
-        light: tokens.colors.success.light,
+        light: isDark ? tokens.accent.tealDim : tokens.colors.success.light,
         dark: tokens.colors.success.dark,
       },
       warning: {
         main: tokens.colors.warning.main,
-        light: tokens.colors.warning.light,
+        light: isDark ? tokens.accent.amberDim : tokens.colors.warning.light,
         dark: tokens.colors.warning.dark,
       },
       error: {
         main: tokens.colors.error.main,
-        light: tokens.colors.error.light,
+        light: isDark ? tokens.accent.redDim : tokens.colors.error.light,
         dark: tokens.colors.error.dark,
       },
       info: {
         main: tokens.colors.info.main,
-        light: tokens.colors.info.light,
+        light: isDark ? tokens.accent.blueDim : tokens.colors.info.light,
         dark: tokens.colors.info.dark,
       },
       background: {
@@ -61,8 +61,8 @@ export const createAppTheme = (
       },
       divider: themeColors.border.main,
       action: {
-        hover: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
-        selected: isDark ? 'rgba(76, 141, 255, 0.12)' : 'rgba(33, 150, 243, 0.08)',
+        hover: isDark ? 'rgba(0, 210, 180, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+        selected: isDark ? 'rgba(0, 210, 180, 0.10)' : 'rgba(0, 194, 145, 0.08)',
       },
     },
     typography: {
@@ -130,7 +130,6 @@ export const createAppTheme = (
       tokens.shadows.sm,
       tokens.shadows.md,
       tokens.shadows.lg,
-      tokens.shadows.xl,
       tokens.shadows.xl,
       tokens.shadows.xl,
       tokens.shadows.xl,

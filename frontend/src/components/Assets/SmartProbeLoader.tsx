@@ -464,7 +464,7 @@ export const SmartProbeLoader: React.FC<SmartProbeLoaderProps> = ({
   // Tech aesthetic colors
   const techColors = {
     background: theme.palette.mode === 'dark'
-      ? 'linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #1565c0 100%)'
+      ? 'linear-gradient(135deg, #0a0e17 0%, #111720 50%, #161d28 100%)'
       : 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 50%, #90caf9 100%)',
     cardBg: theme.palette.mode === 'dark'
       ? alpha(theme.palette.background.paper, 0.9)

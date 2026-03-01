@@ -1,0 +1,153 @@
+/* ============================================================================
+   CRM Surveillance Theme — Global Animations & Utilities
+   ============================================================================ */
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+
+@keyframes crm-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes crm-slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes crm-slideIn {
+  from { transform: translateX(12px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes crm-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes crm-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 210, 180, 0.15); }
+  50%      { box-shadow: 0 0 20px rgba(0, 210, 180, 0.3); }
+}
+
+@keyframes crm-countUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+@keyframes crm-barGrow {
+  from { width: 0; }
+  to   { width: var(--bar-width, 100%); }
+}
+
+@keyframes crm-dropIn {
+  from { transform: scale(0.96) translateY(-4px); opacity: 0; }
+  to   { transform: scale(1) translateY(0);       opacity: 1; }
+}
+
+/* ── Animation utility classes ─────────────────────────────────────────────── */
+
+.crm-animate-slideUp {
+  animation: crm-slideUp 0.35s ease-out both;
+}
+
+.crm-animate-slideIn {
+  animation: crm-slideIn 0.3s ease-out both;
+}
+
+.crm-animate-fadeIn {
+  animation: crm-fadeIn 0.3s ease-out both;
+}
+
+.crm-animate-dropIn {
+  animation: crm-dropIn 0.25s ease-out both;
+}
+
+.crm-animate-countUp {
+  animation: crm-countUp 0.4s ease-out both;
+}
+
+.crm-animate-glow {
+  animation: crm-glow 2s ease-in-out infinite;
+}
+
+/* ── Stagger delays ────────────────────────────────────────────────────────── */
+
+.crm-delay-1 { animation-delay: 0.05s; }
+.crm-delay-2 { animation-delay: 0.10s; }
+.crm-delay-3 { animation-delay: 0.15s; }
+.crm-delay-4 { animation-delay: 0.20s; }
+.crm-delay-5 { animation-delay: 0.25s; }
+.crm-delay-6 { animation-delay: 0.30s; }
+.crm-delay-7 { animation-delay: 0.35s; }
+.crm-delay-8 { animation-delay: 0.40s; }
+
+/* ── Status dots ───────────────────────────────────────────────────────────── */
+
+.crm-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #505a70;
+}
+
+.crm-status-dot--online {
+  background: #00d2b4;
+  animation: crm-pulse 2s ease-in-out infinite;
+}
+
+.crm-status-dot--warning {
+  background: #ffb347;
+}
+
+.crm-status-dot--offline {
+  background: #ff4d6a;
+}
+
+/* ── Mono font utility ─────────────────────────────────────────────────────── */
+
+.crm-mono {
+  font-family: "IBM Plex Mono", "Fira Code", "Consolas", monospace;
+}
+
+/* ── Card hover effect ─────────────────────────────────────────────────────── */
+
+.crm-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.crm-card-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* ── Health progress bar ───────────────────────────────────────────────────── */
+
+.crm-progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.crm-progress__bar {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #00d2b4, #00b89c);
+  animation: crm-barGrow 0.6s ease-out both;
+}
+
+/* ── Kanban ─────────────────────────────────────────────────────────────────── */
+
+.crm-kanban-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.crm-kanban-card:active {
+  transform: scale(0.98);
+}
+
+.crm-kanban-column--dragover {
+  outline: 2px dashed rgba(0, 210, 180, 0.3);
+  outline-offset: -2px;
+  background: rgba(0, 210, 180, 0.04);
+}

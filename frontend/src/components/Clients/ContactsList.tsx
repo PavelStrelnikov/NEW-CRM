@@ -198,7 +198,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({ clientId }) => {
                     color: '#25D366',
                     '&:hover': {
                       borderColor: '#128C7E',
-                      backgroundColor: '#e8f5e9',
+                      backgroundColor: 'rgba(37, 211, 102, 0.1)',
                     }
                   }}
                 >
@@ -442,7 +442,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({ clientId }) => {
                               sx={{
                                 p: 0.5,
                                 color: '#25D366',
-                                '&:hover': { backgroundColor: '#e8f5e9' }
+                                '&:hover': { backgroundColor: 'rgba(37, 211, 102, 0.1)' }
                               }}
                             >
                               <WhatsAppIcon sx={{ fontSize: 18 }} />

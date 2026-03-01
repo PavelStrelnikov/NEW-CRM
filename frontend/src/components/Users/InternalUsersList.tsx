@@ -191,7 +191,7 @@ export const InternalUsersList: React.FC = () => {
                         <DotIcon
                           sx={{
                             fontSize: 16,
-                            color: user.is_active ? '#4caf50' : '#f44336',
+                            color: user.is_active ? 'success.main' : 'error.main',
                           }}
                         />
                       </Tooltip>

@@ -111,30 +111,30 @@ export const HealthStatusIcon: React.FC<HealthStatusIconProps> = ({
       case 'ok':
         return {
           Icon: CheckCircleOutlineIcon,
-          color: '#2e7d32', // Green 800
-          bgColor: 'rgba(46, 125, 50, 0.08)',
+          color: 'success.main',
+          bgColor: 'rgba(0, 210, 180, 0.08)',
           label: t('health.statusOk'),
         };
       case 'warning':
         return {
           Icon: WarningAmberIcon,
-          color: '#ed6c02', // Orange 700
-          bgColor: 'rgba(237, 108, 2, 0.08)',
+          color: 'warning.main',
+          bgColor: 'rgba(255, 179, 71, 0.08)',
           label: t('health.statusWarning'),
         };
       case 'critical':
         return {
           Icon: ErrorOutlineIcon,
-          color: '#d32f2f', // Red 700
-          bgColor: 'rgba(211, 47, 47, 0.08)',
+          color: 'error.main',
+          bgColor: 'rgba(255, 77, 106, 0.08)',
           label: t('health.statusCritical'),
         };
       case 'unknown':
       default:
         return {
           Icon: HelpOutlineIcon,
-          color: '#757575', // Grey 600
-          bgColor: 'rgba(117, 117, 117, 0.08)',
+          color: 'text.disabled',
+          bgColor: 'rgba(80, 90, 112, 0.08)',
           label: t('health.statusUnknown'),
         };
     }

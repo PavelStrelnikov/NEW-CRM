@@ -246,9 +246,9 @@ export const AccessPointDetailsView: React.FC<AccessPointDetailsViewProps> = ({
               {configResult.checks.map(check => (
                 <Box key={check.key} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, py: 0.25 }}>
                   {check.filled ? (
-                    <CheckCircleIcon sx={{ fontSize: 16, color: '#2e7d32' }} />
+                    <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />
                   ) : (
-                    <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: '#bdbdbd' }} />
+                    <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
                   )}
                   <Typography variant="body2" sx={{ fontSize: '0.85rem', color: check.filled ? 'text.primary' : 'text.secondary' }}>
                     {t(check.labelKey)}

@@ -1512,7 +1512,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                             <Typography variant="body2">
                               <strong>{t('assets.cameras')}:</strong>{' '}
                               <span style={{
-                                color: (probeResult.cameras?.offline ?? 0) > 0 ? '#ed6c02' : 'inherit',
+                                color: (probeResult.cameras?.offline ?? 0) > 0 ? '#ffb347' : 'inherit',
                                 fontWeight: (probeResult.cameras?.offline ?? 0) > 0 ? 'bold' : 'normal'
                               }}>
                                 {probeResult.cameras?.online ?? 0}/{probeResult.cameras?.total ?? 0} {t('assets.online')}
@@ -1522,13 +1522,13 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                             <Typography variant="body2">
                               <strong>{t('assets.recording')}:</strong>{' '}
                               <span style={{
-                                color: (probeResult.cameras?.recording_missing ?? 0) > 0 ? '#d32f2f' : '#2e7d32',
+                                color: (probeResult.cameras?.recording_missing ?? 0) > 0 ? '#ff4d6a' : '#00d2b4',
                                 fontWeight: (probeResult.cameras?.recording_missing ?? 0) > 0 ? 'bold' : 'normal'
                               }}>
                                 {probeResult.cameras?.recording_ok ?? 0}/{probeResult.cameras?.total ?? 0} OK
                               </span>
                               {(probeResult.cameras?.recording_missing ?? 0) > 0 && (
-                                <span style={{ color: '#d32f2f' }}>
+                                <span style={{ color: '#ff4d6a' }}>
                                   {' '}({t('assets.recordingMissingCount', { count: probeResult.cameras?.recording_missing ?? 0 })})
                                 </span>
                               )}

@@ -37,7 +37,7 @@ export const ThemeModeProvider: React.FC<ThemeModeProviderProps> = ({ children }
     } catch (error) {
       logger.error('Failed to read theme from localStorage:', error);
     }
-    return 'light';
+    return 'dark';
   });
 
   useEffect(() => {

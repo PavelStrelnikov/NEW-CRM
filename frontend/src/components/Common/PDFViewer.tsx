@@ -155,7 +155,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            bgcolor: '#525659',
+            bgcolor: 'grey.800',
             overflow: 'auto',
           }}
         >
@@ -187,7 +187,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
                 textAlign: 'center',
               }}
             >
-              <PictureAsPdfIcon sx={{ fontSize: 80, color: '#ff5252' }} />
+              <PictureAsPdfIcon sx={{ fontSize: 80, color: 'error.main' }} />
               <Typography variant="h6" sx={{ color: 'white' }}>
                 {filename || 'PDF Document'}
               </Typography>

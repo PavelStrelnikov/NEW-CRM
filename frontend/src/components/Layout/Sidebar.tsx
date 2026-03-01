@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import {
+  Avatar,
   Box,
   Drawer,
   List,
@@ -9,6 +10,7 @@ import {
   ListItemText,
   Toolbar,
   Divider,
+  Typography,
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -64,9 +66,62 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   };
 
   const drawerContent = (
-    <>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ minHeight: 64 }} />
-      <Box sx={{ px: 1, py: 2 }}>
+
+      {/* ── Branding block ──────────────────────────────────── */}
+      <Box sx={{ px: 2.5, pt: 1, pb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box
+          sx={{
+            width: 36,
+            height: 36,
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #00d2b4 0%, #00b89c 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: '"IBM Plex Mono", monospace',
+            fontWeight: 700,
+            fontSize: 18,
+            color: '#0a0e17',
+            flexShrink: 0,
+          }}
+        >
+          C
+        </Box>
+        <Box>
+          <Typography
+            sx={{
+              fontFamily: '"IBM Plex Mono", monospace',
+              fontWeight: 700,
+              fontSize: 15,
+              letterSpacing: '0.08em',
+              color: 'text.primary',
+              lineHeight: 1.2,
+            }}
+          >
+            CRM
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: '"IBM Plex Mono", monospace',
+              fontWeight: 500,
+              fontSize: 9,
+              letterSpacing: '0.2em',
+              color: 'primary.main',
+              textTransform: 'uppercase',
+              lineHeight: 1.2,
+            }}
+          >
+            SURVEILLANCE
+          </Typography>
+        </Box>
+      </Box>
+
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+
+      {/* ── Navigation ──────────────────────────────────────── */}
+      <Box sx={{ px: 1, py: 2, flex: 1, overflow: 'auto' }}>
         <List sx={{ px: 0 }}>
           {menuItems.map((item) => (
             <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
@@ -93,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
         {isAdmin && (
           <>
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.06)' }} />
             <List sx={{ px: 0 }}>
               {adminItems.map((item) => (
                 <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
@@ -120,7 +175,55 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
           </>
         )}
       </Box>
-    </>
+
+      {/* ── User info block ─────────────────────────────────── */}
+      {user && (
+        <>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+          <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
+                bgcolor: 'rgba(0, 210, 180, 0.12)',
+                color: 'primary.main',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              {user.display_name?.charAt(0)?.toUpperCase() || 'U'}
+            </Avatar>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  lineHeight: 1.3,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user.display_name || user.username}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontFamily: '"IBM Plex Mono", monospace',
+                  fontSize: 10,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {user.role}
+              </Typography>
+            </Box>
+          </Box>
+        </>
+      )}
+    </Box>
   );
 
   // On mobile, just return the content (drawer is handled by AppLayout)
@@ -138,8 +241,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',
-          borderRight: '1px solid',
-          borderColor: 'divider',
         },
       }}
       open={open}

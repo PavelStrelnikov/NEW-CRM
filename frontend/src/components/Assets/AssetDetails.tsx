@@ -1024,14 +1024,15 @@ export const AssetDetails: React.FC = () => {
                 {t('clients.client')}
               </Typography>
               {client ? (
-                <Link
-                  component="button"
-                  variant="body2"
-                  onClick={() => navigate(`${clientsBasePath}/${asset.client_id}`)}
-                  sx={{ fontWeight: 500, fontSize: '0.9375rem', textAlign: 'start' }}
-                >
-                  {client.name}
-                </Link>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>
+                  <Link
+                    component="button"
+                    onClick={() => navigate(`${clientsBasePath}/${asset.client_id}`)}
+                    sx={{ fontWeight: 'inherit', fontSize: 'inherit', textAlign: 'inherit', p: 0, verticalAlign: 'baseline' }}
+                  >
+                    {client.name}
+                  </Link>
+                </Typography>
               ) : (
                 <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>—</Typography>
               )}
@@ -1045,6 +1046,11 @@ export const AssetDetails: React.FC = () => {
               <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>
                 {site?.name || '—'}
               </Typography>
+              {site?.address && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block' }}>
+                  {site.address}
+                </Typography>
+              )}
             </Box>
 
             {/* Manufacturer - hidden for simplified types (Router, AP, Switch) */}

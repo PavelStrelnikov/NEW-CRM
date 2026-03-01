@@ -82,6 +82,9 @@ import { RouterConfigStatusIcon } from './RouterConfigStatusIcon';
 import { RouterDetailsView } from './RouterDetailsView';
 import { AccessPointDetailsView } from './AccessPointDetailsView';
 import { SwitchDetailsView } from './SwitchDetailsView';
+import { NVRDetailsView } from './NVRDetailsView';
+import { NVRAssetHeader } from './NVRAssetHeader';
+import { NVRClientSiteRow } from './NVRClientSiteRow';
 import { getRouterConfigStatus } from '@/utils/routerConfigStatus';
 import { getAPConfigStatus } from '@/utils/accessPointConfigStatus';
 import { getSwitchConfigStatus } from '@/utils/switchConfigStatus';
@@ -96,132 +99,7 @@ import {
 } from '@/utils/diskStatus';
 import { generateTicketFromProbe } from '@/utils/issueDescriptionGenerator';
 import { useResponsive } from '@/hooks/useResponsive';
-
-// ============================================================================
-// COMPACT FIELD COMPONENTS
-// ============================================================================
-
-// Readable monospace font stack for technical data
-const MONO_FONT = '"SF Mono", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
-
-// Compact field for technical info display - optimized for readability
-const CompactField: React.FC<{
-  label: string;
-  value: React.ReactNode;
-  monospace?: boolean;
-  copyable?: boolean;
-  onCopy?: () => void;
-  ltr?: boolean;
-  truncate?: boolean;
-  maxWidth?: number | string;
-}> = ({ label, value, monospace, copyable, onCopy, ltr, truncate = true, maxWidth }) => (
-  <Box sx={{ minWidth: 0, maxWidth }}>
-    <Typography
-      variant="caption"
-      color="text.secondary"
-      sx={{
-        display: 'block',
-        lineHeight: 1.2,
-        mb: 0.25,
-        fontSize: '0.8rem',
-        textTransform: 'uppercase',
-        letterSpacing: '0.02em',
-      }}
-    >
-      {label}
-    </Typography>
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, minWidth: 0 }}>
-      <Typography
-        variant="body2"
-        dir={ltr || monospace ? 'ltr' : undefined}
-        sx={{
-          fontFamily: monospace ? MONO_FONT : 'inherit',
-          fontWeight: 500,
-          fontSize: '0.9375rem',
-          lineHeight: 1.4,
-          ...(truncate && {
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }),
-          textAlign: ltr || monospace ? 'left' : undefined,
-        }}
-      >
-        {value || '—'}
-      </Typography>
-      {copyable && value && onCopy && (
-        <Tooltip title="Copy">
-          <IconButton size="small" onClick={onCopy} sx={{ p: 0.25, ml: 0.25, opacity: 0.6, '&:hover': { opacity: 1 } }}>
-            <ContentCopyIcon sx={{ fontSize: 14 }} />
-          </IconButton>
-        </Tooltip>
-      )}
-    </Box>
-  </Box>
-);
-
-// Truncated serial number with tooltip showing full value
-const TruncatedSerial: React.FC<{
-  serial: string | null | undefined;
-  onCopy: () => void;
-}> = ({ serial, onCopy }) => {
-  if (!serial) return <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.9375rem' }}>—</Typography>;
-
-  // Show first 6 and last 6 chars if long enough
-  const truncated = serial.length > 14
-    ? `${serial.slice(0, 6)}…${serial.slice(-6)}`
-    : serial;
-
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-      <Tooltip title={serial} placement="top">
-        <Typography
-          variant="body2"
-          dir="ltr"
-          sx={{
-            fontFamily: MONO_FONT,
-            fontWeight: 500,
-            fontSize: '0.9375rem',
-            cursor: 'help',
-          }}
-        >
-          {truncated}
-        </Typography>
-      </Tooltip>
-      <Tooltip title="Copy full serial">
-        <IconButton size="small" onClick={onCopy} sx={{ p: 0.25, opacity: 0.6, '&:hover': { opacity: 1 } }}>
-          <ContentCopyIcon sx={{ fontSize: 14 }} />
-        </IconButton>
-      </Tooltip>
-    </Box>
-  );
-};
-
-// Card section header - compact
-const SectionHeader: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-  action?: React.ReactNode;
-  color?: string;
-}> = ({ icon, title, action, color = 'primary.main' }) => (
-  <Box sx={{
-    display: 'flex',
-    alignItems: 'center',
-    gap: 0.75,
-    mb: 1,
-    pb: 0.75,
-    borderBottom: '1px solid',
-    borderColor: 'divider',
-  }}>
-    <Box sx={{ color, display: 'flex', alignItems: 'center' }}>
-      {icon}
-    </Box>
-    <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1 }}>
-      {title}
-    </Typography>
-    {action}
-  </Box>
-);
+import { CompactField, TruncatedSerial, SectionHeader, MONO_FONT } from './shared/AssetFieldComponents';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -911,9 +789,30 @@ export const AssetDetails: React.FC = () => {
       </Box>
 
       {/* ================================================================== */}
-      {/* REDESIGNED ASSET HEADER - 2 ROW COMPACT LAYOUT */}
+      {/* NVR COMMAND CENTER HEADER (for NVR/DVR assets only) */}
       {/* ================================================================== */}
-      <Card variant="outlined" sx={{ mb: 1.5 }}>
+      {isNvrDvr && (
+        <>
+          <NVRAssetHeader
+            asset={asset}
+            assetTypeName={getAssetTypeName(asset.asset_type_code)}
+            hasDiskIssues={hasDiskIssues}
+            onNavigateTicket={(ticketId) => navigate(`${ticketsBasePath}/${ticketId}`)}
+            onCopySerial={() => handleCopy(asset.serial_number || '')}
+            ticketsBasePath={ticketsBasePath}
+          />
+          <NVRClientSiteRow
+            client={client}
+            site={site}
+            onNavigateClient={() => navigate(`${clientsBasePath}/${asset.client_id}`)}
+          />
+        </>
+      )}
+
+      {/* ================================================================== */}
+      {/* GENERIC ASSET HEADER (for non-NVR assets) */}
+      {/* ================================================================== */}
+      {!isNvrDvr && <Card variant="outlined" sx={{ mb: 1.5 }}>
         <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
           {/* Row 1: Title + Badges */}
           <Box sx={{
@@ -1090,16 +989,50 @@ export const AssetDetails: React.FC = () => {
             </Box>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* ================================================================== */}
-      {/* TABS - Compact */}
+      {/* TABS */}
       {/* ================================================================== */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
-        <Tabs value={currentTab} onChange={(_, v) => setCurrentTab(v)} sx={{ minHeight: 32 }}>
-          <Tab label={t('assets.properties')} sx={{ minHeight: 32, py: 0.5, fontSize: '0.8rem' }} />
-          <Tab label={t('assets.linkedTickets')} sx={{ minHeight: 32, py: 0.5, fontSize: '0.8rem' }} />
-          <Tab label={t('activity.title')} sx={{ minHeight: 32, py: 0.5, fontSize: '0.8rem' }} />
+      <Box sx={{ mb: 1.5 }}>
+        <Tabs
+          value={currentTab}
+          onChange={(_, v) => setCurrentTab(v)}
+          sx={{
+            minHeight: 40,
+            '& .MuiTabs-indicator': { display: 'none' },
+            '& .MuiTab-root': {
+              minHeight: 40,
+              borderRadius: '10px',
+              mx: 0.5,
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              textTransform: 'none',
+              color: 'text.secondary',
+              transition: 'all 0.2s ease',
+              '&.Mui-selected': {
+                bgcolor: 'primary.main',
+                color: '#0a0e17',
+                fontWeight: 600,
+              },
+            },
+          }}
+        >
+          <Tab
+            icon={<SettingsIcon sx={{ fontSize: 16 }} />}
+            iconPosition="start"
+            label={t('assets.properties')}
+          />
+          <Tab
+            icon={<ConfirmationNumberIcon sx={{ fontSize: 16 }} />}
+            iconPosition="start"
+            label={t('assets.linkedTickets')}
+          />
+          <Tab
+            icon={<InfoOutlinedIcon sx={{ fontSize: 16 }} />}
+            iconPosition="start"
+            label={t('activity.title')}
+          />
         </Tabs>
       </Box>
 
@@ -1109,777 +1042,37 @@ export const AssetDetails: React.FC = () => {
       {currentTab === 0 && (
         <Box>
           {isNvrDvr && asset.properties && asset.properties.length > 0 ? (
-            <Grid container spacing={1}>
-              {/* ============================================================ */}
-              {/* MAIN COLUMN: Full width on tablet, 9/12 on desktop */}
-              {/* Tablet: single column layout with 2-col grids inside cards */}
-              {/* ============================================================ */}
-              <Grid item xs={12} lg={9}>
-                <Stack spacing={1}>
-                  {/* -------------------------------------------------------- */}
-                  {/* NETWORK & CONNECTION - Tablet-optimized layout */}
-                  {/* -------------------------------------------------------- */}
-                  <Card variant="outlined">
-                    <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-                      <SectionHeader
-                        icon={<RouterIcon sx={{ fontSize: 18 }} />}
-                        title={t('assets.networkConnection')}
-                        action={
-                          webUiUrl && (
-                            <Button
-                              variant="text"
-                              size="small"
-                              startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                              onClick={() => window.open(webUiUrl, '_blank')}
-                              sx={{
-                                textTransform: 'none',
-                                fontSize: '0.75rem',
-                                py: 0.25,
-                                minHeight: 24,
-                              }}
-                            >
-                              Web UI
-                              <Chip
-                                label={(getProp('wan_proto') || 'http').toUpperCase()}
-                                size="small"
-                                sx={{
-                                  ml: 0.5,
-                                  height: 16,
-                                  fontSize: '0.6rem',
-                                  '& .MuiChip-label': { px: 0.5 }
-                                }}
-                                color={(getProp('wan_proto') || 'http') === 'https' ? 'success' : 'default'}
-                              />
-                            </Button>
-                          )
-                        }
-                      />
-
-                      <Grid container spacing={1.5}>
-                        {/* WAN Column */}
-                        <Grid item xs={12} sm={6}>
-                          <Box sx={{
-                            bgcolor: 'grey.50',
-                            borderRadius: 1,
-                            p: 1,
-                            border: '1px solid',
-                            borderColor: 'grey.200',
-                            height: '100%',
-                          }}>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontWeight: 600,
-                                color: 'primary.main',
-                                fontSize: '0.7rem',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                              }}
-                            >
-                              WAN / {t('assets.externalAccess')}
-                            </Typography>
-                            {/* Tablet/Desktop: IP full width, ports in row below */}
-                            <Box sx={{ mt: 0.75 }}>
-                              {/* IP Address - full width */}
-                              <Box sx={{ mb: 0.75 }}>
-                                <CompactField
-                                  label={t('assets.wanIp')}
-                                  value={getProp('wan_public_ip')}
-                                  monospace
-                                  copyable
-                                  onCopy={() => handleCopy(getProp('wan_public_ip'))}
-                                  truncate={false}
-                                />
-                              </Box>
-                              {/* Ports row - Protocol + Web Port + Service Port */}
-                              <Box sx={{
-                                display: 'grid',
-                                gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(3, 1fr)' },
-                                gap: 1,
-                                alignItems: 'end',
-                              }}>
-                                <CompactField
-                                  label={t('assets.protocol')}
-                                  value={(getProp('wan_proto') || 'http').toUpperCase()}
-                                />
-                                <CompactField label={t('assets.webPort')} value={getProp('wan_http_port') || 80} monospace />
-                                <CompactField label={t('assets.servicePort')} value={getProp('wan_service_port') || 8000} monospace />
-                              </Box>
-                            </Box>
-                          </Box>
-                        </Grid>
-
-                        {/* LAN Column */}
-                        <Grid item xs={12} sm={6}>
-                          <Box sx={{
-                            bgcolor: 'grey.50',
-                            borderRadius: 1,
-                            p: 1,
-                            border: '1px solid',
-                            borderColor: 'grey.200',
-                            height: '100%',
-                          }}>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontWeight: 600,
-                                color: 'primary.main',
-                                fontSize: '0.7rem',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                              }}
-                            >
-                              LAN / {t('assets.internalNetwork')}
-                            </Typography>
-                            {/* IP full width, ports below */}
-                            <Box sx={{ mt: 0.75 }}>
-                              {/* IP Address - full width */}
-                              <Box sx={{ mb: 0.75 }}>
-                                <CompactField
-                                  label={t('assets.lanIp')}
-                                  value={getProp('lan_ip_address')}
-                                  monospace
-                                  copyable
-                                  onCopy={() => handleCopy(getProp('lan_ip_address'))}
-                                  truncate={false}
-                                />
-                              </Box>
-                              {/* Ports row */}
-                              <Box sx={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(2, 1fr)',
-                                gap: 1,
-                                alignItems: 'end',
-                              }}>
-                                <CompactField label={t('assets.webPort')} value={getProp('lan_http_port') || 80} monospace />
-                                <CompactField label={t('assets.servicePort')} value={getProp('lan_service_port') || 8000} monospace />
-                              </Box>
-                            </Box>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Card>
-
-                  {/* -------------------------------------------------------- */}
-                  {/* CREDENTIALS + SYSTEM SPECS - Tablet: 2-column layout */}
-                  {/* -------------------------------------------------------- */}
-                  <Card variant="outlined">
-                    <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-                      <Grid container spacing={1.5}>
-                        {/* Credentials Section */}
-                        <Grid item xs={12} sm={6} md={5}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75 }}>
-                            <VpnKeyIcon sx={{ color: 'primary.main', fontSize: 16 }} />
-                            <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                              {t('assets.credentials')}
-                            </Typography>
-                          </Box>
-                          <Box sx={{
-                            display: 'grid',
-                            gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr' },
-                            gap: 1.5,
-                          }}>
-                            <CompactField
-                              label={t('assets.deviceUsername')}
-                              value={getProp('device_username')}
-                              monospace
-                              copyable
-                              onCopy={() => handleCopy(getProp('device_username'))}
-                            />
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, mb: 0.25, fontSize: '0.8rem', textTransform: 'uppercase' }}>
-                                {t('assets.devicePassword')}
-                              </Typography>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                                <Typography
-                                  variant="body2"
-                                  dir="ltr"
-                                  sx={{ fontFamily: MONO_FONT, fontWeight: 500, fontSize: '0.9375rem', textAlign: 'left' }}
-                                >
-                                  {getProp('device_password')
-                                    ? (visibleSecrets.has('device_password') ? getProp('device_password') : '••••••••')
-                                    : '—'}
-                                </Typography>
-                                {getProp('device_password') && (
-                                  <>
-                                    <IconButton size="small" onClick={() => toggleSecretVisibility('device_password')} sx={{ p: 0.25, opacity: 0.6 }}>
-                                      {visibleSecrets.has('device_password') ? <VisibilityOffIcon sx={{ fontSize: 14 }} /> : <VisibilityIcon sx={{ fontSize: 14 }} />}
-                                    </IconButton>
-                                    <IconButton size="small" onClick={() => handleCopy(getProp('device_password'))} sx={{ p: 0.25, opacity: 0.6 }}>
-                                      <ContentCopyIcon sx={{ fontSize: 14 }} />
-                                    </IconButton>
-                                  </>
-                                )}
-                              </Box>
-                            </Box>
-                          </Box>
-                        </Grid>
-
-                        {/* Divider - visible on sm+ as vertical, hidden on mobile */}
-                        <Grid item xs={12} sm="auto" sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'stretch' }}>
-                          <Divider orientation="vertical" flexItem />
-                        </Grid>
-
-                        {/* System Specs Section */}
-                        <Grid item xs={12} sm>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75 }}>
-                            <SettingsIcon sx={{ color: 'primary.main', fontSize: 16 }} />
-                            <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                              {t('assets.systemSpecs')}
-                            </Typography>
-                          </Box>
-                          {/* Tablet: 2x2 grid, Desktop: 4 columns */}
-                          <Box sx={{
-                            display: 'grid',
-                            gridTemplateColumns: {
-                              xs: 'repeat(2, 1fr)',   // Mobile: 2 columns
-                              sm: 'repeat(2, 1fr)',   // Tablet: 2 columns
-                              lg: 'repeat(4, 1fr)',   // Desktop: 4 columns
-                            },
-                            gap: 1,
-                          }}>
-                            <CompactField label={t('assets.maxChannels')} value={getProp('max_camera_channels')} />
-                            <CompactField label={t('assets.connectedCameras')} value={getProp('camera_count_connected')} />
-                            <CompactField
-                              label={t('assets.poeSupported')}
-                              value={
-                                getProp('poe_supported') === true ? t('assets.yes') :
-                                getProp('poe_supported') === false ? t('assets.no') : '—'
-                              }
-                            />
-                            <CompactField label={t('assets.poePortCount')} value={getProp('poe_port_count')} />
-                          </Box>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Card>
-
-                  {/* -------------------------------------------------------- */}
-                  {/* STORAGE / HDD DASHBOARD - Compact table */}
-                  {/* -------------------------------------------------------- */}
-                  <Card
-                    variant="outlined"
-                    sx={hasDiskIssues ? { borderColor: 'error.main', borderWidth: 2 } : undefined}
-                  >
-                    <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 }, position: 'relative' }}>
-                      {/* Loading overlay */}
-                      {probeMutation.isPending && (
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 1,
-                            borderRadius: 1,
-                          }}
-                        >
-                          <Box sx={{ textAlign: 'center' }}>
-                            <CircularProgress size={24} />
-                            <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                              {t('assets.probeDevice')}...
-                            </Typography>
-                          </Box>
-                        </Box>
-                      )}
-
-                      <SectionHeader
-                        icon={<StorageIcon sx={{ fontSize: 18 }} />}
-                        title={t('assets.storageHdds')}
-                        color={hasDiskIssues ? 'error.main' : 'primary.main'}
-                        action={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {hasDiskIssues && (
-                              <Chip
-                                icon={<WarningIcon sx={{ fontSize: 12 }} />}
-                                label={t('assets.diskStatusError')}
-                                size="small"
-                                color="error"
-                                sx={{ height: 20, fontSize: '0.65rem' }}
-                              />
-                            )}
-                            <Typography variant="caption" color="text.secondary">
-                              {disks?.length || 0} {t('assets.disks')}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-
-                      {disks && disks.length > 0 ? (
-                        <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                          <Table size="small" sx={{ tableLayout: 'fixed' }}>
-                            <TableHead>
-                              <TableRow sx={{ backgroundColor: 'grey.50' }}>
-                                <TableCell sx={{ fontWeight: 600, width: 40, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>#</TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: 120, py: 0.75, fontSize: '0.8rem' }}>{t('assets.diskSerial')}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: 50, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>TB</TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: 100, textAlign: 'right', py: 0.75, fontSize: '0.8rem' }}>{t('assets.workingHours')}</TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: 45, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>°C</TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: 80, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>{t('assets.diskStatus')}</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {disks.map((disk) => {
-                                const isBad = isDiskStatusBad(disk.status);
-                                return (
-                                  <TableRow
-                                    key={disk.id}
-                                    sx={isBad ? {
-                                      backgroundColor: 'error.lighter',
-                                      '&:hover': { backgroundColor: 'rgba(211, 47, 47, 0.12)' },
-                                    } : {
-                                      '&:hover': { backgroundColor: 'action.hover' },
-                                    }}
-                                  >
-                                    <TableCell sx={{ textAlign: 'center', fontWeight: isBad ? 600 : 400, py: 0.75, fontSize: '0.875rem' }}>
-                                      {disk.slot_number || '-'}
-                                    </TableCell>
-                                    <TableCell sx={{
-                                      fontFamily: MONO_FONT,
-                                      fontSize: '0.8rem',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      fontWeight: isBad ? 600 : 400,
-                                      py: 0.75,
-                                      color: isBad ? 'error.main' : 'inherit',
-                                    }}>
-                                      {disk.serial_number || '-'}
-                                    </TableCell>
-                                    <TableCell sx={{ textAlign: 'center', fontWeight: isBad ? 600 : 400, py: 0.75, fontSize: '0.875rem' }}>
-                                      {disk.capacity_tb}
-                                    </TableCell>
-                                    <TableCell sx={{
-                                      textAlign: 'right',
-                                      fontWeight: isBad ? 600 : 400,
-                                      py: 0.75,
-                                      color: isBad ? 'error.main' : 'inherit',
-                                      fontFamily: MONO_FONT,
-                                      fontSize: '0.8rem',
-                                    }}>
-                                      {formatRuntime(disk.working_hours, locale)}
-                                    </TableCell>
-                                    <TableCell sx={{ textAlign: 'center', py: 0.75, fontSize: '0.875rem' }}>
-                                      {formatTemperature(disk.temperature)}
-                                    </TableCell>
-                                    <TableCell sx={{ textAlign: 'center', py: 0.75 }}>
-                                      <Tooltip title={disk.smart_status ? `S.M.A.R.T.: ${disk.smart_status}` : ''}>
-                                        <Chip
-                                          icon={isBad ? <ErrorIcon sx={{ fontSize: 14 }} /> : <CheckCircleIcon sx={{ fontSize: 14 }} />}
-                                          label={getDiskStatusLabel(disk.status, t)}
-                                          size="small"
-                                          color={isBad ? 'error' : 'success'}
-                                          variant={isBad ? 'filled' : 'outlined'}
-                                          sx={{ height: 22, fontSize: '0.75rem', '& .MuiChip-label': { px: 0.75 } }}
-                                        />
-                                      </Tooltip>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 1.5 }}>
-                          {t('assets.noDisks')}
-                        </Typography>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* -------------------------------------------------------- */}
-                  {/* CHANNEL STATUS ACCORDION */}
-                  {/* -------------------------------------------------------- */}
-                  {channels && channels.length > 0 && (
-                    <Accordion
-                      expanded={channelAccordionExpanded}
-                      onChange={(_, expanded) => setChannelAccordionExpanded(expanded)}
-                      variant="outlined"
-                      sx={{ '&:before': { display: 'none' } }}
-                    >
-                      <AccordionSummary
-                        expandIcon={<ExpandMoreIcon />}
-                        sx={{ minHeight: 40, '& .MuiAccordionSummary-content': { my: 0.5 } }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                          <VideocamIcon sx={{ color: 'primary.main', fontSize: 18 }} />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                            {t('assets.channelStatus')}
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 0.75, ml: 'auto', mr: 2 }}>
-                            {!channelEditMode && (() => {
-                              const configuredChannels = channels.filter(ch => ch.is_configured);
-                              const activeChannels = configuredChannels.filter(ch => !ch.is_ignored);
-                              const onlineCount = activeChannels.filter(ch => ch.is_online).length;
-                              const recordingOkCount = activeChannels.filter(ch => ch.has_recording_24h).length;
-                              const totalActive = activeChannels.length;
-
-                              return (
-                                <>
-                                  <Chip
-                                    icon={<VideocamIcon sx={{ fontSize: 12 }} />}
-                                    label={`${onlineCount}/${totalActive}`}
-                                    size="small"
-                                    color={onlineCount < totalActive ? 'warning' : 'success'}
-                                    variant="outlined"
-                                    sx={{ height: 20, fontSize: '0.65rem' }}
-                                  />
-                                  <Chip
-                                    icon={<FiberManualRecordIcon sx={{ fontSize: 10 }} />}
-                                    label={`${recordingOkCount}/${totalActive} OK`}
-                                    size="small"
-                                    color={recordingOkCount < totalActive ? 'error' : 'success'}
-                                    variant="outlined"
-                                    sx={{ height: 20, fontSize: '0.65rem' }}
-                                  />
-                                </>
-                              );
-                            })()}
-                          </Box>
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1 }}>
-                        {!channelEditMode && (
-                          <Box sx={{ mb: 0.75, display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button
-                              size="small"
-                              startIcon={<EditIcon sx={{ fontSize: 14 }} />}
-                              onClick={handleEditChannelsClick}
-                              variant="outlined"
-                              sx={{ fontSize: '0.75rem', py: 0.25 }}
-                            >
-                              {t('assets.editChannels')}
-                            </Button>
-                          </Box>
-                        )}
-                        {channelEditMode && (
-                          <Box sx={{ mb: 0.75, display: 'flex', justifyContent: 'flex-end', gap: 0.75 }}>
-                            <Button
-                              size="small"
-                              startIcon={<CancelIcon sx={{ fontSize: 14 }} />}
-                              onClick={handleCancelChannelEdits}
-                              variant="outlined"
-                              sx={{ fontSize: '0.75rem', py: 0.25 }}
-                            >
-                              {t('common.cancel')}
-                            </Button>
-                            <Button
-                              size="small"
-                              startIcon={<SaveIcon sx={{ fontSize: 14 }} />}
-                              onClick={handleSaveChannels}
-                              variant="contained"
-                              disabled={channelUpdateMutation.isPending}
-                              sx={{ fontSize: '0.75rem', py: 0.25 }}
-                            >
-                              {channelUpdateMutation.isPending ? t('common.saving') : t('common.save')}
-                            </Button>
-                          </Box>
-                        )}
-                        <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                          <Table size="small">
-                            <TableHead>
-                              <TableRow sx={{ backgroundColor: 'grey.50' }}>
-                                <TableCell sx={{ fontWeight: 600, width: 55, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>
-                                  {t('assets.channelNumber')}
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: channelEditMode ? 140 : 90, py: 0.75, fontSize: '0.8rem' }}>
-                                  {t('assets.channelName')}
-                                </TableCell>
-                                {channelEditMode && (
-                                  <TableCell sx={{ fontWeight: 600, width: 170, py: 0.75, fontSize: '0.8rem' }}>
-                                    {t('assets.channelNotes')}
-                                  </TableCell>
-                                )}
-                                {!channelEditMode && (
-                                  <TableCell sx={{ fontWeight: 600, width: 120, py: 0.75, fontSize: '0.8rem' }} dir="ltr">
-                                    {t('assets.channelIp')}
-                                  </TableCell>
-                                )}
-                                <TableCell sx={{ fontWeight: 600, width: 90, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>
-                                  {channelEditMode ? t('assets.channelIgnore') : t('assets.channelStatusLabel')}
-                                </TableCell>
-                                {!channelEditMode && (
-                                  <TableCell sx={{ fontWeight: 600, width: 110, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>
-                                    {t('assets.recordingStatus')}
-                                  </TableCell>
-                                )}
-                                {!channelEditMode && !isPortalUser && (
-                                  <TableCell sx={{ fontWeight: 600, width: 40, textAlign: 'center', py: 0.75, fontSize: '0.8rem' }}>
-                                  </TableCell>
-                                )}
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {channels
-                                .filter(ch => ch.is_configured)
-                                .map((channel) => {
-                                  const edit = channelEdits.get(channel.channel_number);
-                                  const isIgnored = edit?.is_ignored ?? channel.is_ignored;
-                                  const isOffline = !channel.is_online;
-                                  const noRecording = !channel.has_recording_24h;
-                                  const hasIssue = !isIgnored && (isOffline || noRecording);
-
-                                  return (
-                                    <TableRow
-                                      key={channel.channel_number}
-                                      sx={{
-                                        opacity: isIgnored ? 0.5 : 1,
-                                        backgroundColor: hasIssue ? (isOffline ? 'warning.lighter' : 'error.lighter') : undefined,
-                                      }}
-                                    >
-                                      <TableCell sx={{ textAlign: 'center', fontWeight: 500, py: 0.75, fontSize: '0.875rem' }}>
-                                        D{channel.channel_number}
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>
-                                        {channelEditMode ? (
-                                          <TextField
-                                            size="small"
-                                            fullWidth
-                                            placeholder={channel.name || `D${channel.channel_number}`}
-                                            value={edit?.custom_name ?? channel.custom_name ?? ''}
-                                            onChange={(e) => handleChannelFieldChange(channel.channel_number, 'custom_name', e.target.value || undefined)}
-                                            sx={{ '& .MuiInputBase-root': { fontSize: '0.875rem' } }}
-                                          />
-                                        ) : (
-                                          channel.custom_name || channel.name || `D${channel.channel_number}`
-                                        )}
-                                      </TableCell>
-                                      {channelEditMode && (
-                                        <TableCell sx={{ py: 0.75 }}>
-                                          <TextField
-                                            size="small"
-                                            fullWidth
-                                            placeholder={t('assets.channelNotesPlaceholder')}
-                                            value={edit?.notes ?? channel.notes ?? ''}
-                                            onChange={(e) => handleChannelFieldChange(channel.channel_number, 'notes', e.target.value || undefined)}
-                                            sx={{ '& .MuiInputBase-root': { fontSize: '0.875rem' } }}
-                                          />
-                                        </TableCell>
-                                      )}
-                                      {!channelEditMode && (
-                                        <TableCell sx={{ fontFamily: MONO_FONT, fontSize: '0.8rem', py: 0.75 }} dir="ltr">
-                                          {channel.ip_address || '-'}
-                                        </TableCell>
-                                      )}
-                                      <TableCell sx={{ textAlign: 'center', py: 0.75 }}>
-                                        {channelEditMode ? (
-                                          <Checkbox
-                                            checked={isIgnored}
-                                            onChange={(e) => handleChannelFieldChange(channel.channel_number, 'is_ignored', e.target.checked)}
-                                            size="small"
-                                            sx={{ p: 0.25 }}
-                                          />
-                                        ) : (
-                                          <Chip
-                                            icon={channel.is_online ? <VideocamIcon sx={{ fontSize: 12 }} /> : <VideocamOffIcon sx={{ fontSize: 12 }} />}
-                                            label={channel.is_online ? t('assets.online') : t('assets.offline')}
-                                            size="small"
-                                            color={channel.is_online ? 'success' : 'warning'}
-                                            variant={channel.is_online ? 'outlined' : 'filled'}
-                                            sx={{ height: 22, fontSize: '0.75rem', '& .MuiChip-label': { px: 0.5 } }}
-                                          />
-                                        )}
-                                      </TableCell>
-                                      {!channelEditMode && (
-                                        <TableCell sx={{ textAlign: 'center', py: 0.75 }}>
-                                          <Chip
-                                            icon={<FiberManualRecordIcon sx={{ fontSize: 10 }} />}
-                                            label={channel.has_recording_24h ? t('assets.recordingOk') : t('assets.recordingMissing')}
-                                            size="small"
-                                            color={channel.has_recording_24h ? 'success' : 'error'}
-                                            variant={channel.has_recording_24h ? 'outlined' : 'filled'}
-                                            sx={{ height: 22, fontSize: '0.75rem', '& .MuiChip-label': { px: 0.5 } }}
-                                          />
-                                        </TableCell>
-                                      )}
-                                      {!channelEditMode && !isPortalUser && (
-                                        <TableCell sx={{ textAlign: 'center', py: 0.25 }}>
-                                          <Tooltip title={channel.is_online ? t('assets.snapshot') : t('assets.snapshotNotAvailable')}>
-                                            <span>
-                                              <IconButton
-                                                size="small"
-                                                onClick={() => handleSnapshotClick(channel.channel_number)}
-                                                disabled={!channel.is_online}
-                                                sx={{ p: 0.25 }}
-                                              >
-                                                <CameraAltIcon sx={{ fontSize: 16 }} />
-                                              </IconButton>
-                                            </span>
-                                          </Tooltip>
-                                        </TableCell>
-                                      )}
-                                    </TableRow>
-                                  );
-                                })}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </AccordionDetails>
-                    </Accordion>
-                  )}
-
-                  {/* Additional Properties (if any) */}
-                  {remainingProperties.length > 0 && (
-                    <Card variant="outlined">
-                      <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-                        <SectionHeader
-                          icon={<InfoOutlinedIcon sx={{ fontSize: 18 }} />}
-                          title={t('assets.additionalProperties')}
-                        />
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 1 }}>
-                          {remainingProperties.map((prop) => (
-                            prop.data_type === 'secret' ? (
-                              <Box key={prop.key} sx={{ minWidth: 0 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, mb: 0.25, fontSize: '0.8rem', textTransform: 'uppercase' }}>
-                                  {prop.label}
-                                </Typography>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                                  <Typography variant="body2" dir="ltr" sx={{ fontFamily: 'monospace', fontWeight: 500, fontSize: '0.9375rem', textAlign: 'left' }}>
-                                    {prop.value ? (visibleSecrets.has(prop.key) ? prop.value?.toString() : '••••••••') : '—'}
-                                  </Typography>
-                                  {prop.value && (
-                                    <>
-                                      <IconButton size="small" onClick={() => toggleSecretVisibility(prop.key)} sx={{ p: 0.25, opacity: 0.6 }}>
-                                        {visibleSecrets.has(prop.key) ? <VisibilityOffIcon sx={{ fontSize: 14 }} /> : <VisibilityIcon sx={{ fontSize: 14 }} />}
-                                      </IconButton>
-                                      <IconButton size="small" onClick={() => handleCopy(prop.value?.toString() || '')} sx={{ p: 0.25, opacity: 0.6 }}>
-                                        <ContentCopyIcon sx={{ fontSize: 14 }} />
-                                      </IconButton>
-                                    </>
-                                  )}
-                                </Box>
-                              </Box>
-                            ) : (
-                              <CompactField
-                                key={prop.key}
-                                label={prop.label}
-                                value={
-                                  prop.data_type === 'bool' ? (prop.value ? t('assets.yes') : t('assets.no')) :
-                                  prop.value?.toString()
-                                }
-                              />
-                            )
-                          ))}
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  )}
-                </Stack>
-              </Grid>
-
-              {/* ============================================================ */}
-              {/* RIGHT COLUMN: Actions (desktop only - sticky sidebar) */}
-              {/* On tablet: actions are shown inline in header */}
-              {/* ============================================================ */}
-              <Grid item xs={12} lg={3} sx={{ display: { xs: 'none', lg: 'block' } }}>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    position: 'sticky',
-                    top: 16,
-                  }}
-                >
-                  <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-                    <SectionHeader
-                      icon={<PlayArrowIcon sx={{ fontSize: 18 }} />}
-                      title={t('assets.actionCenter')}
-                    />
-                    <Stack spacing={0.75}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        fullWidth
-                        startIcon={<RefreshIcon sx={{ fontSize: 16 }} />}
-                        onClick={handleProbeDevice}
-                        disabled={probeMutation.isPending || !canProbe}
-                        color="primary"
-                        sx={{ fontSize: '0.8rem', py: 0.75 }}
-                      >
-                        {t('assets.probeDevice')}
-                      </Button>
-
-                      {shouldShowServiceTicketButton && (
-                        <Button
-                          variant="contained"
-                          size="small"
-                          fullWidth
-                          startIcon={<ConfirmationNumberIcon sx={{ fontSize: 16 }} />}
-                          onClick={handleOpenServiceTicket}
-                          color="error"
-                          sx={{
-                            fontSize: '0.8rem',
-                            py: 0.75,
-                            animation: asset.health_status === 'critical' ? 'pulse 2s ease-in-out infinite' : 'none',
-                            '@keyframes pulse': {
-                              '0%': { opacity: 1 },
-                              '50%': { opacity: 0.7 },
-                              '100%': { opacity: 1 },
-                            },
-                          }}
-                        >
-                          {t('assets.openServiceTicket')}
-                        </Button>
-                      )}
-
-                      {hasTimeDrift && (
-                        <Button
-                          variant="contained"
-                          size="small"
-                          fullWidth
-                          startIcon={<SyncIcon sx={{ fontSize: 16 }} />}
-                          onClick={() => setTimeSyncDialogOpen(true)}
-                          color="warning"
-                          sx={{ fontSize: '0.8rem', py: 0.75 }}
-                        >
-                          {t('probe.timeSync')}
-                        </Button>
-                      )}
-
-                      <Divider sx={{ my: 0.5 }} />
-
-                      <Tooltip title={t('assets.comingSoon')}>
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            fullWidth
-                            startIcon={<PlayArrowIcon sx={{ fontSize: 16 }} />}
-                            disabled
-                            color="info"
-                            sx={{ fontSize: '0.75rem', py: 0.5 }}
-                          >
-                            {t('assets.testConnection')}
-                          </Button>
-                        </span>
-                      </Tooltip>
-
-                      <Tooltip title={t('assets.comingSoon')}>
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            fullWidth
-                            startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
-                            disabled
-                            color="warning"
-                            sx={{ fontSize: '0.75rem', py: 0.5 }}
-                          >
-                            {t('assets.reboot')}
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            <NVRDetailsView
+              asset={asset}
+              getProp={getProp}
+              visibleSecrets={visibleSecrets}
+              toggleSecretVisibility={toggleSecretVisibility}
+              handleCopy={handleCopy}
+              webUiUrl={webUiUrl}
+              channels={channels}
+              channelEditMode={channelEditMode}
+              channelEdits={channelEdits}
+              onEditChannelsClick={handleEditChannelsClick}
+              onCancelChannelEdits={handleCancelChannelEdits}
+              onSaveChannels={handleSaveChannels}
+              onChannelFieldChange={handleChannelFieldChange}
+              channelUpdatePending={channelUpdateMutation.isPending}
+              disks={disks}
+              hasDiskIssues={hasDiskIssues}
+              probePending={probeMutation.isPending}
+              canProbe={!!canProbe}
+              onProbeDevice={handleProbeDevice}
+              shouldShowServiceTicketButton={shouldShowServiceTicketButton}
+              onOpenServiceTicket={handleOpenServiceTicket}
+              hasTimeDrift={hasTimeDrift}
+              onTimeSyncClick={() => setTimeSyncDialogOpen(true)}
+              healthStatus={(asset.health_status as HealthStatus) || 'unknown'}
+              onSnapshotClick={handleSnapshotClick}
+              isPortalUser={isPortalUser}
+              events={events}
+              remainingProperties={remainingProperties}
+              locale={locale}
+            />
           ) : isRouterType && asset.properties && asset.properties.length > 0 ? (
             /* Router assets: Dedicated 4-card layout */
             <RouterDetailsView

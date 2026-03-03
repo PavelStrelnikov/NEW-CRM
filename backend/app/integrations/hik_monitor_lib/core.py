@@ -729,8 +729,8 @@ class HikvisionManager:
         a single frame from the specified channel in JPEG format.
 
         Args:
-            channel: Channel display number (1-16 for D1-D16).
-                For NVR devices, these map to IP camera slots.
+            channel: Channel display number (1-based).
+                Auto-detects DVR analog (A1-A16) vs NVR IP (D1-D64) channels.
 
         Returns:
             Tuple[bool, Optional[bytes], str]: A tuple containing:

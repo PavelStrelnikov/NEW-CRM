@@ -531,6 +531,10 @@ export interface HikvisionDeviceInfo {
   firmwareVersion?: string;
   macAddress?: string;
   maxChannels?: number;
+  analogChannels?: number;
+  ipChannels?: number;
+  deviceType?: number;
+  deviceTypeName?: string;
 }
 
 export interface HikvisionDiskInfo {
@@ -560,8 +564,9 @@ export interface HikvisionStorageInfo {
 }
 
 export interface HikvisionChannelDetail {
-  channel_number: number;       // Display number (D1=1, D2=2, etc.)
-  name?: string;                // Channel name from NVR
+  channel_number: number;       // Display number (1-based)
+  name?: string;                // Channel name (A1 for analog, D1 for IP)
+  channel_type?: string;        // "analog" or "ip"
   ip_address?: string;          // Camera IP address (LTR)
   protocol?: string;            // Connection protocol
   is_configured: boolean;       // Channel has camera configured

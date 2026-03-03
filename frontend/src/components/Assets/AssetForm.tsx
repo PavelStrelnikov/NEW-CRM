@@ -31,6 +31,7 @@ import {
   TableRow,
   Paper,
   InputAdornment,
+  alpha,
 } from '@mui/material';
 import {
   Refresh as ProbeIcon,
@@ -1310,14 +1311,14 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                         {/* WAN Section */}
                         <Grid item xs={12} sm={6}>
                           <Box sx={{
-                            bgcolor: 'grey.50',
+                            bgcolor: (theme) => alpha(theme.palette.error.main, 0.06),
                             borderRadius: 1,
                             p: 1.5,
                             border: '1px solid',
-                            borderColor: 'grey.200',
+                            borderColor: (theme) => alpha(theme.palette.error.main, 0.25),
                             height: '100%',
                           }}>
-                            <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600, mb: 1.5, display: 'block' }}>
+                            <Typography variant="caption" color="error.main" sx={{ fontWeight: 600, mb: 1.5, display: 'block' }}>
                               WAN / {t('assets.externalAccess')}
                             </Typography>
                             {/* IP Address - full width */}
@@ -1375,11 +1376,11 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                         {/* LAN Section */}
                         <Grid item xs={12} sm={6}>
                           <Box sx={{
-                            bgcolor: 'grey.50',
+                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.06),
                             borderRadius: 1,
                             p: 1.5,
                             border: '1px solid',
-                            borderColor: 'grey.200',
+                            borderColor: (theme) => alpha(theme.palette.primary.main, 0.25),
                             height: '100%',
                           }}>
                             <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600, mb: 1.5, display: 'block' }}>

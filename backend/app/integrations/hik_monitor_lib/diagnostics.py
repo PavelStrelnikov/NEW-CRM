@@ -919,55 +919,79 @@ class Diagnostics:
         self._manager._ensure_connected()
 
         channels = []
+        dev = self.device_info.struDeviceV30
+        analog_count = dev.byChanNum
+        start_chan = dev.byStartChan if dev.byStartChan > 0 else 1
+
+        logger.info(f"[channels] Device info: analog={analog_count} (start={start_chan}), "
+                    f"ip={dev.byIPChanNum + (dev.byHighDChanNum << 8)} (start={dev.byStartDChan})")
 
         # Аналоговые каналы из WORKSTATE
-        work_state = NET_DVR_WORKSTATE_V40()
-        work_state.dwSize = sizeof(work_state)
-        returned = DWORD(0)
+        if analog_count > 0:
+            work_state = NET_DVR_WORKSTATE_V40()
+            work_state.dwSize = sizeof(work_state)
+            returned = DWORD(0)
 
-        result = self.sdk.NET_DVR_GetDVRConfig(
-            self.user_id,
-            NET_DVR_GET_WORKSTATE_V40,
-            0,
-            byref(work_state),
-            sizeof(work_state),
-            byref(returned)
-        )
+            result = self.sdk.NET_DVR_GetDVRConfig(
+                self.user_id,
+                NET_DVR_GET_WORKSTATE_V40,
+                0,
+                byref(work_state),
+                sizeof(work_state),
+                byref(returned)
+            )
 
-        if result:
-            dev = self.device_info.struDeviceV30
-            analog_count = dev.byChanNum
-            start_chan = dev.byStartChan
+            if result:
+                for i in range(analog_count):
+                    chan = work_state.struChanStatic[i]
 
-            for i in range(analog_count):
-                chan = work_state.struChanStatic[i]
+                    channels.append(ChannelInfo(
+                        channel_number=start_chan + i,
+                        display_number=i + 1,
+                        channel_type="analog",
+                        is_configured=True,
+                        is_online=chan.bySignalStatic == 0,
+                        is_recording=chan.byRecordStatic == 1,
+                        has_signal=chan.bySignalStatic == 0,
+                        bitrate_kbps=chan.dwBitRate,
+                        connected_clients=chan.dwLinkNum,
+                    ))
+                logger.info(f"[channels] WORKSTATE OK: {analog_count} analog channels added")
+            else:
+                # WORKSTATE failed — still add analog channels without status info
+                error_code = self._manager.get_last_error()
+                logger.warning(f"[channels] WORKSTATE_V40 failed (error={error_code}), "
+                             f"adding {analog_count} analog channels without status")
+                for i in range(analog_count):
+                    channels.append(ChannelInfo(
+                        channel_number=start_chan + i,
+                        display_number=i + 1,
+                        channel_type="analog",
+                        is_configured=True,
+                        is_online=True,  # Assume online when status unknown
+                        has_signal=True,
+                    ))
 
-                channels.append(ChannelInfo(
-                    channel_number=start_chan + i,
-                    display_number=i + 1,
-                    channel_type="analog",
-                    is_configured=True,
-                    is_online=chan.bySignalStatic == 0,
-                    is_recording=chan.byRecordStatic == 1,
-                    has_signal=chan.bySignalStatic == 0,
-                    bitrate_kbps=chan.dwBitRate,
-                    connected_clients=chan.dwLinkNum,
-                ))
-
-        # IP каналы
-        ip_channels = self._get_ip_channels()
+        # IP каналы (display numbers offset by analog_count to avoid overlap)
+        ip_channels = self._get_ip_channels(display_offset=analog_count)
         channels.extend(ip_channels)
+        logger.info(f"[channels] Total: {len(channels)} channels ({analog_count} analog + {len(ip_channels)} IP)")
 
         return channels
 
-    def _get_ip_channels(self) -> List[ChannelInfo]:
-        """Получить IP каналы (приоритет: ISAPI, fallback: SDK)."""
-        channels = self._get_ip_channels_via_isapi()
+    def _get_ip_channels(self, display_offset: int = 0) -> List[ChannelInfo]:
+        """Получить IP каналы (приоритет: ISAPI, fallback: SDK).
+
+        Args:
+            display_offset: Offset for display_number to avoid overlap with analog channels.
+                For pure NVR this is 0, for hybrid DVR this is analog_count.
+        """
+        channels = self._get_ip_channels_via_isapi(display_offset=display_offset)
         if channels:
             return channels
-        return self._get_ip_channels_via_sdk()
+        return self._get_ip_channels_via_sdk(display_offset=display_offset)
 
-    def _get_ip_channels_via_isapi(self) -> List[ChannelInfo]:
+    def _get_ip_channels_via_isapi(self, display_offset: int = 0) -> List[ChannelInfo]:
         """Получить IP каналы через ISAPI."""
         try:
             url = b"GET /ISAPI/ContentMgmt/InputProxy/channels/status\r\n"
@@ -1039,12 +1063,13 @@ class Diagnostics:
             channels = []
             for slot in range(1, total_ip_channels + 1):
                 sdk_channel_number = start_dchan + slot - 1
+                display_num = slot + display_offset
 
                 if slot in configured_channels:
                     ch_data = configured_channels[slot]
                     channels.append(ChannelInfo(
                         channel_number=sdk_channel_number,
-                        display_number=slot,
+                        display_number=display_num,
                         channel_type="ip",
                         is_configured=True,
                         is_online=ch_data["is_online"],
@@ -1055,7 +1080,7 @@ class Diagnostics:
                 else:
                     channels.append(ChannelInfo(
                         channel_number=sdk_channel_number,
-                        display_number=slot,
+                        display_number=display_num,
                         channel_type="ip",
                         is_configured=False,
                         is_online=False,
@@ -1069,7 +1094,7 @@ class Diagnostics:
             logger.debug(f"ISAPI channels request failed: {e}")
             return []
 
-    def _get_ip_channels_via_sdk(self) -> List[ChannelInfo]:
+    def _get_ip_channels_via_sdk(self, display_offset: int = 0) -> List[ChannelInfo]:
         """Получить IP каналы через Binary SDK (fallback)."""
         ip_cfg = NET_DVR_IPPARACFG_V40()
         ip_cfg.dwSize = sizeof(ip_cfg)
@@ -1112,7 +1137,7 @@ class Diagnostics:
 
         channels = []
         for slot in range(min(num_channels, MAX_CHANNUM_V30)):
-            d_number = slot + 1
+            d_number = slot + 1 + display_offset
             sdk_channel_number = start_dchan + slot
 
             stream_mode = ip_cfg.struStreamMode[slot]
@@ -1823,6 +1848,40 @@ class Diagnostics:
     # SNAPSHOT CAPTURE (SDK)
     # ========================================================================
 
+    def _resolve_sdk_channel(self, channel_display_number: int) -> int:
+        """
+        Map a display channel number (1-based) to the actual SDK channel number.
+
+        DVR (analog-only): SDK channel = byStartChan + display - 1 (usually 1-based)
+        NVR (IP channels):  SDK channel = byStartDChan + display - 1 (usually 33-based)
+        Hybrid (both):      analog range first, then IP range
+        """
+        dev = self.device_info.struDeviceV30
+        analog_count = dev.byChanNum
+        ip_count = dev.byIPChanNum + (dev.byHighDChanNum << 8)
+
+        if ip_count > 0 and analog_count == 0:
+            # Pure NVR — only IP channels
+            start_dchan = dev.byStartDChan if dev.byStartDChan > 0 else 33
+            return start_dchan + channel_display_number - 1
+        elif analog_count > 0 and ip_count == 0:
+            # Pure DVR — only analog channels
+            start_chan = dev.byStartChan if dev.byStartChan > 0 else 1
+            return start_chan + channel_display_number - 1
+        elif analog_count > 0 and ip_count > 0:
+            # Hybrid device — analog channels listed first, then IP
+            if channel_display_number <= analog_count:
+                start_chan = dev.byStartChan if dev.byStartChan > 0 else 1
+                return start_chan + channel_display_number - 1
+            else:
+                # IP channel: display_number beyond analog range
+                ip_display = channel_display_number - analog_count
+                start_dchan = dev.byStartDChan if dev.byStartDChan > 0 else 33
+                return start_dchan + ip_display - 1
+        else:
+            # Fallback: assume IP channels starting at 33
+            return 33 + channel_display_number - 1
+
     def get_snapshot_sync(self, channel_display_number: int) -> Tuple[bool, Optional[bytes], str]:
         """
         Получить снимок (snapshot) с канала через SDK (синхронно).
@@ -1830,16 +1889,15 @@ class Diagnostics:
         Использует NET_DVR_CaptureJPEGPicture_NEW для получения JPEG в память.
 
         Args:
-            channel_display_number: Номер канала для отображения (D1-D16, т.е. 1-16)
+            channel_display_number: Номер канала для отображения (1-based)
 
         Returns:
             Tuple (успех, bytes изображения или None, сообщение об ошибке)
         """
         self._manager._ensure_connected()
 
-        # Для NVR IP каналы начинаются с 33 (D1 = 33, D2 = 34, ...)
-        # display_number 1 -> SDK channel 33
-        sdk_channel = 32 + channel_display_number
+        dev = self.device_info.struDeviceV30
+        sdk_channel = self._resolve_sdk_channel(channel_display_number)
 
         try:
             # Настройки JPEG: автоматическое разрешение, лучшее качество
@@ -1870,7 +1928,7 @@ class Diagnostics:
 
                     # Проверяем что это JPEG (начинается с FFD8)
                     if len(image_data) > 2 and image_data[0:2] == b'\xff\xd8':
-                        logger.debug(f"Snapshot D{channel_display_number}: {len(image_data)} bytes")
+                        logger.debug(f"Snapshot ch{channel_display_number} (sdk={sdk_channel}): {len(image_data)} bytes")
                         return (True, image_data, "")
                     else:
                         return (False, None, "Not JPEG data")
@@ -1879,12 +1937,12 @@ class Diagnostics:
             else:
                 error_code = self._manager.get_last_error()
                 error_msg = f"SDK error {error_code}"
-                logger.warning(f"Snapshot D{channel_display_number} failed: {error_msg}")
+                logger.warning(f"Snapshot ch{channel_display_number} (sdk={sdk_channel}) failed: {error_msg}")
                 return (False, None, error_msg)
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Snapshot D{channel_display_number} exception: {error_msg}")
+            logger.error(f"Snapshot ch{channel_display_number} (sdk={sdk_channel}) exception: {error_msg}")
             return (False, None, error_msg)
 
     def get_all_snapshots_sync(self, channels: List[int] = None) -> Dict[int, Tuple[bool, Optional[bytes], str]]:
@@ -1892,13 +1950,19 @@ class Diagnostics:
         Получить снимки со всех указанных каналов (синхронно).
 
         Args:
-            channels: Список номеров каналов (D1-D16). Если None - все 16 каналов.
+            channels: Список display номеров каналов (1-based). Если None - все каналы по device_info.
 
         Returns:
             Словарь {номер_канала: (успех, bytes, ошибка)}
         """
         if channels is None:
-            channels = list(range(1, 17))
+            dev = self.device_info.struDeviceV30
+            analog_count = dev.byChanNum
+            ip_count = dev.byIPChanNum + (dev.byHighDChanNum << 8)
+            total = analog_count + ip_count
+            if total <= 0:
+                total = 16  # fallback
+            channels = list(range(1, total + 1))
 
         results = {}
         for ch_num in channels:

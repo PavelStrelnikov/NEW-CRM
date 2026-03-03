@@ -56,7 +56,8 @@ from app.api import (
     auth, clients, sites, contacts, locations, tickets, assets, reports,
     attachments, admin, projects, audit, work_logs, ticket_assets,
     ticket_assignment, portal_auth, portal_tickets, portal_assets, portal_clients,
-    internal_users, hikvision, hikvision_ws, portal_client_users, portal_attachments
+    internal_users, hikvision, hikvision_ws, portal_client_users, portal_attachments,
+    cameras
 )
 
 # Internal API routes
@@ -80,6 +81,7 @@ app.include_router(internal_users.router, prefix="/api/v1", tags=["Internal User
 app.include_router(audit.router, prefix="/api/v1", tags=["Audit"])
 app.include_router(hikvision.router, prefix="/api/v1", tags=["Hikvision"])
 app.include_router(hikvision_ws.router, prefix="/api/v1", tags=["Hikvision WebSocket"])
+app.include_router(cameras.router, prefix="/api/v1", tags=["Cameras"])
 
 # Portal API routes (client users)
 app.include_router(portal_auth.router, prefix="/api/v1/portal/auth", tags=["Portal Authentication"])

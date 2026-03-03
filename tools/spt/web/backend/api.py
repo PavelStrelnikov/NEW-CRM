@@ -184,6 +184,14 @@ async def speech_to_ticket(
             f"Length: {len(raw_text)} chars"
         )
 
+        # Validate transcription is not empty
+        if not raw_text or not raw_text.strip():
+            logger.warning("Transcription returned empty text — no speech detected in audio")
+            raise HTTPException(
+                status_code=422,
+                detail="No speech detected in audio. Please try recording again."
+            )
+
         # Step 2: Translation (if needed)
         translated_text = None
         translation_needed = force_translation and detected_language != output_language

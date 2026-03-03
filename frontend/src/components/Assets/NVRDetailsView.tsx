@@ -821,7 +821,7 @@ export const NVRDetailsView: React.FC<NVRDetailsViewProps> = ({
                                 lineHeight: 1.2,
                               }}
                             >
-                              CH {channel.channel_number}
+                              {channel.name || `CH ${channel.channel_number}`}
                             </Typography>
 
                             {/* Custom name */}

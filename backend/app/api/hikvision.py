@@ -165,12 +165,10 @@ async def get_channel_snapshot(
     current_user: CurrentUser = Depends(require_internal_user),
 ):
     """
-    Get a JPEG snapshot from a specific camera channel via ISAPI.
+    Get a JPEG snapshot from a specific camera channel via Hikvision SDK.
 
-    Uses direct HTTP requests to the Hikvision ISAPI endpoint instead of SDK.
-    This works through HTTP port (80/81) and doesn't require the SDK DLL.
-
-    ISAPI endpoint: /ISAPI/Streaming/channels/{channel}01/picture
+    Uses the SDK connection pool (port 8000) to capture a JPEG frame.
+    Falls back to ISAPI HTTP if SDK fails.
 
     Args:
         asset_id: UUID of the NVR/DVR asset
@@ -180,8 +178,9 @@ async def get_channel_snapshot(
         JPEG image as binary response with Content-Type: image/jpeg
     """
     from fastapi.responses import Response
+    from app.integrations.hik_monitor_lib.connection_pool import get_connection_pool
 
-    logger.info(f"[snapshot] Getting ISAPI snapshot for asset_id={asset_id}, channel={channel}")
+    logger.info(f"[snapshot] Getting SDK snapshot for asset_id={asset_id}, channel={channel}")
 
     _require_nvr_dvr(db, asset_id)
 
@@ -194,8 +193,31 @@ async def get_channel_snapshot(
     except ValueError as e:
         raise HTTPException(status_code=404 if "not found" in str(e) else 400, detail=str(e))
 
+    pool = get_connection_pool()
+    sdk_path = get_sdk_path()
+    pool_key = (str(asset_id), creds.host, creds.port)
+
     try:
-        jpeg_data = await isapi_get_snapshot(creds.host, creds.web_port, creds.username, creds.password, channel)
+        manager, is_new = await pool.get_connection(
+            str(asset_id), creds.host, creds.port,
+            creds.username, creds.password, sdk_path
+        )
+        logger.info(f"[snapshot] SDK connection acquired (new={is_new})")
+
+        success, jpeg_data, error_msg = await manager.get_snapshot(channel)
+
+        if not success or not jpeg_data:
+            logger.warning(f"[snapshot] SDK capture failed: {error_msg}, trying ISAPI fallback")
+            # Fallback to ISAPI
+            try:
+                jpeg_data = await isapi_get_snapshot(
+                    creds.host, creds.web_port, creds.username, creds.password, channel
+                )
+            except IsapiError as ie:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"SDK: {error_msg}; ISAPI fallback: {ie}"
+                )
 
         return Response(
             content=jpeg_data,
@@ -206,9 +228,13 @@ async def get_channel_snapshot(
             }
         )
 
-    except IsapiError as e:
-        status = 503 if "timed out" in str(e) or "connect" in str(e).lower() else 500
-        raise HTTPException(status_code=status, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"[snapshot] Snapshot capture failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Snapshot capture failed: {e}")
+    finally:
+        pool.release_connection(*pool_key)
 
 
 # ==================== Endpoints для синхронизации времени ====================

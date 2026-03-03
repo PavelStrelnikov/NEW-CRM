@@ -342,7 +342,13 @@
     "files": "קבצים",
     "whatsapp": "WhatsApp",
     "sendEmail": "שלח מייל",
-    "copyPhone": "העתק מספר טלפון"
+    "copyPhone": "העתק מספר טלפון",
+    "viewList": "תצוגת רשימה",
+    "viewKanban": "תצוגת לוח",
+    "kanbanEmpty": "אין טיקטים בסטטוס זה",
+    "ticketMoved": "הטיקט הועבר בהצלחה",
+    "ticketMoveFailed": "שגיאה בהעברת הטיקט",
+    "dragToChangeStatus": "גרור כדי לשנות סטטוס"
   },
   "assets": {
     "title": "נכסים",
@@ -514,6 +520,13 @@
     "snapshotError": "נכשל בטעינת התמונה",
     "snapshotTitle": "תמונה - ערוץ D{{channel}}",
     "snapshotNotAvailable": "תמונה לא זמינה עבור ערוצים מנותקים",
+    "cameraSnapshot": "תמונת מצלמה",
+    "cameraSnapshotAutoRefresh": "רענון אוטומטי כל {{seconds}} שניות",
+    "cameraSnapshotRefresh": "רענון",
+    "cameraProtocol": "פרוטוקול",
+    "cameraParentNVR": "מקליט אב",
+    "cameraChannel": "ערוץ",
+    "cameraStreamType": "סוג סטרים",
     "videoComingSoon": "תכונת צפייה בוידאו תהיה זמינה בקרוב",
     "liveVideo": "וידאו חי",
     "liveVideoTitle": "וידאו חי - ערוץ D{{channel}}",

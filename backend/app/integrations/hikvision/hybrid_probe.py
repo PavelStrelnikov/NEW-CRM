@@ -106,6 +106,10 @@ def convert_sync_data_to_response(
             (sync_data.device.analog_channels + sync_data.device.ip_channels)
             if sync_data.device else 0
         ),
+        "analogChannels": sync_data.device.analog_channels if sync_data.device else 0,
+        "ipChannels": sync_data.device.ip_channels if sync_data.device else 0,
+        "deviceType": sync_data.device.device_type if sync_data.device else None,
+        "deviceTypeName": sync_data.device.device_type_name if sync_data.device else None,
     }
 
     # Storage info with S.M.A.R.T.
@@ -168,9 +172,12 @@ def convert_sync_data_to_response(
             else:
                 recording_missing_count += 1
 
+        # Channel prefix: A for analog (DVR), D for IP (NVR)
+        ch_prefix = "A" if ch.channel_type == "analog" else "D"
         channel_details.append({
             "channel_number": ch.display_number,
-            "name": f"D{ch.display_number}",  # Default name, can be enhanced later
+            "name": f"{ch_prefix}{ch.display_number}",
+            "channel_type": ch.channel_type,
             "ip_address": ch.ip_address or None,
             "protocol": ch.protocol or None,
             "is_configured": ch.is_configured,

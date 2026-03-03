@@ -6,7 +6,7 @@ Cross-platform support for Windows and Linux.
 """
 
 import sys
-from ctypes import Structure, Union, c_byte, c_char, c_ushort, c_int, c_long, c_float, c_void_p, c_uint
+from ctypes import Structure, Union, c_byte, c_ubyte, c_char, c_ushort, c_int, c_long, c_float, c_void_p, c_uint
 from datetime import datetime
 from enum import IntEnum
 
@@ -181,14 +181,14 @@ class NET_DVR_DEVICEINFO_V30(Structure):
     """Device information v3.0."""
     _fields_ = [
         ("sSerialNumber", c_byte * SERIALNO_LEN),
-        ("byAlarmInPortNum", c_byte),
-        ("byAlarmOutPortNum", c_byte),
-        ("byDiskNum", c_byte),
-        ("byDVRType", c_byte),
-        ("byChanNum", c_byte),
-        ("byStartChan", c_byte),
-        ("byAudioChanNum", c_byte),
-        ("byIPChanNum", c_byte),
+        ("byAlarmInPortNum", c_ubyte),
+        ("byAlarmOutPortNum", c_ubyte),
+        ("byDiskNum", c_ubyte),
+        ("byDVRType", c_ubyte),
+        ("byChanNum", c_ubyte),
+        ("byStartChan", c_ubyte),
+        ("byAudioChanNum", c_ubyte),
+        ("byIPChanNum", c_ubyte),
         ("byZeroChanNum", c_byte),
         ("byMainProto", c_byte),
         ("bySubProto", c_byte),
@@ -198,9 +198,9 @@ class NET_DVR_DEVICEINFO_V30(Structure):
         ("wDevType", c_ushort),
         ("bySupport3", c_byte),
         ("byMultiStreamProto", c_byte),
-        ("byStartDChan", c_byte),
-        ("byStartDTalkChan", c_byte),
-        ("byHighDChanNum", c_byte),
+        ("byStartDChan", c_ubyte),
+        ("byStartDTalkChan", c_ubyte),
+        ("byHighDChanNum", c_ubyte),
         ("bySupport4", c_byte),
         ("byLanguageType", c_byte),
         ("byVoiceInChanNum", c_byte),

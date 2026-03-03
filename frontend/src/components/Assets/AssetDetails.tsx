@@ -90,6 +90,7 @@ import { getAPConfigStatus } from '@/utils/accessPointConfigStatus';
 import { getSwitchConfigStatus } from '@/utils/switchConfigStatus';
 import { TicketForm } from '../Tickets/TicketForm';
 import { TimeSyncDialog } from './TimeSyncDialog';
+import { CameraSnapshot } from './CameraSnapshot';
 import { AssetProperty, AssetUsageSummary, HikvisionProbeResponse, HealthStatus, NVRChannelBulkUpdate, Client, Site, ChannelWithStatus } from '@/types';
 import { formatRuntime, formatTemperature } from '@/utils/formatters';
 import { SmartProbeLoader } from './SmartProbeLoader';
@@ -155,11 +156,10 @@ export const AssetDetails: React.FC = () => {
   const [channelEditMode, setChannelEditMode] = useState(false);
   const [channelEdits, setChannelEdits] = useState<Map<number, NVRChannelBulkUpdate>>(new Map());
 
-  // Snapshot preview state
+  // Snapshot preview state (NVR channel mode)
   const [snapshotChannel, setSnapshotChannel] = useState<number | null>(null);
-  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const [snapshotError, setSnapshotError] = useState<string | null>(null);
+  // Snapshot preview state (standalone CAMERA mode)
+  const [showCameraSnapshot, setShowCameraSnapshot] = useState(false);
 
   // Copy to clipboard helper
   const handleCopy = async (text: string) => {
@@ -171,35 +171,13 @@ export const AssetDetails: React.FC = () => {
     }
   };
 
-  // Snapshot preview handler
-  const handleSnapshotClick = async (channelNum: number) => {
-    if (!id) return;
-    // Cleanup previous snapshot URL
-    if (snapshotUrl) {
-      URL.revokeObjectURL(snapshotUrl);
-    }
+  // NVR channel snapshot handler
+  const handleSnapshotClick = (channelNum: number) => {
     setSnapshotChannel(channelNum);
-    setSnapshotUrl(null);
-    setSnapshotError(null);
-    setSnapshotLoading(true);
-    try {
-      const blob = await hikvisionApi.getSnapshot(id, channelNum);
-      const url = URL.createObjectURL(blob);
-      setSnapshotUrl(url);
-    } catch (err: any) {
-      setSnapshotError(err?.response?.data?.detail || err?.message || t('assets.snapshotError'));
-    } finally {
-      setSnapshotLoading(false);
-    }
   };
 
   const handleSnapshotClose = () => {
-    if (snapshotUrl) {
-      URL.revokeObjectURL(snapshotUrl);
-    }
     setSnapshotChannel(null);
-    setSnapshotUrl(null);
-    setSnapshotError(null);
   };
 
   // Check if user can edit assets
@@ -265,6 +243,7 @@ export const AssetDetails: React.FC = () => {
   const isRouterType = asset?.asset_type_code === 'ROUTER';
   const isAccessPointType = asset?.asset_type_code === 'ACCESS_POINT';
   const isSwitchType = asset?.asset_type_code === 'SWITCH';
+  const isCameraType = asset?.asset_type_code === 'CAMERA';
   const isSimplifiedType = isRouterType || isAccessPointType || isSwitchType;
 
   const routerConfigResult = useMemo(() => {
@@ -784,6 +763,22 @@ export const AssetDetails: React.FC = () => {
                 {t('probe.timeSync')}
               </Button>
             )}
+          </Box>
+        )}
+
+        {/* Camera Snapshot button for CAMERA-type assets */}
+        {showInlineActions && isCameraType && !isPortalUser && (
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: isMobile ? 'center' : 'flex-end' }}>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<CameraAltIcon sx={{ fontSize: 16 }} />}
+              onClick={() => setShowCameraSnapshot(true)}
+              color="primary"
+              sx={{ fontSize: '0.75rem', py: 0.5, flexGrow: isMobile ? 1 : 0 }}
+            >
+              {t('assets.cameraSnapshot')}
+            </Button>
           </Box>
         )}
       </Box>
@@ -1517,50 +1512,23 @@ export const AssetDetails: React.FC = () => {
         />
       )}
 
-      {/* Snapshot Preview Dialog */}
-      <Dialog
+      {/* NVR Channel Snapshot Dialog */}
+      <CameraSnapshot
         open={snapshotChannel !== null}
         onClose={handleSnapshotClose}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          {t('assets.snapshotTitle', { channel: snapshotChannel })}
-        </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center', minHeight: 200 }}>
-          {snapshotLoading && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 4 }}>
-              <CircularProgress size={40} />
-              <Typography variant="body2" color="text.secondary">
-                {t('assets.snapshotLoading')}
-              </Typography>
-            </Box>
-          )}
-          {snapshotError && (
-            <Alert severity="error" sx={{ my: 2 }}>
-              {snapshotError}
-            </Alert>
-          )}
-          {snapshotUrl && (
-            <Box
-              component="img"
-              src={snapshotUrl}
-              alt={`Snapshot D${snapshotChannel}`}
-              sx={{
-                maxWidth: '100%',
-                maxHeight: '70vh',
-                borderRadius: 1,
-                boxShadow: 1,
-              }}
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleSnapshotClose}>
-            {t('app.close')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        nvrAssetId={id}
+        channelNumber={snapshotChannel ?? undefined}
+        title={snapshotChannel !== null ? t('assets.snapshotTitle', { channel: snapshotChannel }) : undefined}
+      />
+
+      {/* Standalone CAMERA Snapshot Dialog */}
+      <CameraSnapshot
+        open={showCameraSnapshot}
+        onClose={() => setShowCameraSnapshot(false)}
+        cameraAssetId={id}
+        title={asset?.label ? `${t('assets.cameraSnapshot')} - ${asset.label}` : t('assets.cameraSnapshot')}
+        autoRefreshSeconds={30}
+      />
     </Box>
   );
 };

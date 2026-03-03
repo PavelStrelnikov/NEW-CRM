@@ -342,7 +342,13 @@
     "files": "Files",
     "whatsapp": "WhatsApp",
     "sendEmail": "Send Email",
-    "copyPhone": "Copy phone number"
+    "copyPhone": "Copy phone number",
+    "viewList": "List View",
+    "viewKanban": "Board View",
+    "kanbanEmpty": "No tickets with this status",
+    "ticketMoved": "Ticket moved successfully",
+    "ticketMoveFailed": "Failed to move ticket",
+    "dragToChangeStatus": "Drag to change status"
   },
   "assets": {
     "title": "Assets",
@@ -514,6 +520,13 @@
     "snapshotError": "Failed to load snapshot",
     "snapshotTitle": "Snapshot - Channel D{{channel}}",
     "snapshotNotAvailable": "Snapshot not available for offline channels",
+    "cameraSnapshot": "Camera Snapshot",
+    "cameraSnapshotAutoRefresh": "Auto-refresh every {{seconds}}s",
+    "cameraSnapshotRefresh": "Refresh",
+    "cameraProtocol": "Protocol",
+    "cameraParentNVR": "Parent NVR",
+    "cameraChannel": "Channel",
+    "cameraStreamType": "Stream Type",
     "videoComingSoon": "Video stream feature coming soon",
     "liveVideo": "Live Video",
     "liveVideoTitle": "Live Video - Channel D{{channel}}",

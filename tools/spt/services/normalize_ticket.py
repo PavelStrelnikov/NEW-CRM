@@ -92,6 +92,10 @@ class TicketNormalizationService:
                 f"Normalization prompt not found for language: {language}"
             )
 
+        if not text or not text.strip():
+            logger.warning("Empty text passed to normalize_ticket, returning empty string")
+            return ""
+
         logger.info(f"Normalizing text in {language}, length: {len(text)} chars")
 
         # Build full prompt
